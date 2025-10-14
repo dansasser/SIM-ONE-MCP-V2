@@ -1,0 +1,8 @@
+{
+  "user_text": "This is fantastic! Everything is going so well!",
+  "detected_emotion": "joy",
+  "valence": 0.7,
+  "intensity": 0.6,
+  "recommended_tone": "encouraging",
+  "guidance": "Match their positive energy. Celebrate their emotion."
+}

@@ -1,0 +1,8 @@
+{
+  "user_text": "I don't understand how this works. Can you explain?",
+  "detected_emotion": "confusion",
+  "valence": -0.7,
+  "intensity": 0.6,
+  "recommended_tone": "clear_explanatory",
+  "guidance": "Provide clear, structured explanations. Break down complex ideas."
+}

@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cat:*)",
+      "mcp__simone-gitmcp__fetch_SIM_ONE_documentation",
+      "mcp__simone-gitmcp__search_SIM_ONE_documentation",
+      "mcp__simone-gitmcp__fetch_generic_url_content",
+      "mcp__simone-gitmcp__search_SIM_ONE_code",
+      "Read(//c/Users/admin/OneDrive/Desktop/SIM-ONE/repo 10-05-2025 before update for paper2agent/**)",
+      "Bash(ls:*)",
+      "Bash(find:*)",
+      "Read(//c/Users/admin/AppData/Roaming/Claude/**)",
+      "Read(//c/Users/admin/.claude/**)",
+      "Bash(claude mcp:*)",
+      "mcp__SIM-ONE-Agent__simone_validate_five_laws",
+      "Bash(python:*)",
+      "Bash(for file in run_rep_tool.py run_vvp_tool.py run_esl_tool.py)",
+      "Bash(do echo \"=== $file ===\")",
+      "Bash(done)",
+      "WebSearch",
+      "Read(//c/Users/admin/**)",
+      "Bash(dir:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

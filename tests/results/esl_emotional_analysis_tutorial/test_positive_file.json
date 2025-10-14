@@ -1,0 +1,11 @@
+{
+  "emotional_state": {
+    "primary_emotion": "joy",
+    "secondary_emotions": [],
+    "social_emotions": [],
+    "cognitive_indicators": [],
+    "valence": 0.7,
+    "intensity": 0.75,
+    "confidence": 0.9
+  }
+}

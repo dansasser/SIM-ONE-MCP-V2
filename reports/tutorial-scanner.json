@@ -1,0 +1,53 @@
+{
+  "scan_metadata": {
+    "github_repo_name": "SIM-ONE",
+    "paper_name": "SIM-ONE Framework: Governed Cognition and the Five Laws of Cognitive Governance",
+    "scan_date": "2025-10-12",
+    "total_files_scanned": 5,
+    "total_files_included_in_tools": 5,
+    "success": true,
+    "success_reason": "Successfully scanned and classified all 5 tutorial notebooks in the SIM-ONE repository"
+  },
+  "tutorials": [
+    {
+      "path": "tutorials/esl_emotional_analysis_tutorial.ipynb",
+      "title": "ESL Emotional Analysis Tutorial",
+      "description": "Demonstrates SIM-ONE's Emotional State Layer (ESL) protocol for analyzing emotional content in text using multi-dimensional emotion detection. Covers primary emotions (joy, sadness, anger, fear, surprise, disgust), social emotions (pride, shame, guilt, empathy), and cognitive emotions (curiosity, confusion, frustration). Provides comprehensive examples of emotion analysis, progression tracking, and empathetic response generation with practical visualizations.",
+      "type": "notebook",
+      "include_in_tools": true,
+      "reason_for_include_or_exclude": "INCLUDE: Contains complete, runnable code for emotion analysis with clear input/output structure. The esl.process() method is self-contained and reusable across different text analysis projects. Demonstrates practical functionality for detecting emotional states, tracking progression over conversations, and generating empathetic responses. Code is well-documented with examples covering single emotions, mixed emotions, batch analysis, and integration patterns."
+    },
+    {
+      "path": "tutorials/five_laws_validator_tutorial.ipynb",
+      "title": "Five Laws Cognitive Governance Validator Tutorial",
+      "description": "Demonstrates SIM-ONE's Five Laws validation system for ensuring AI-generated content adheres to cognitive governance principles including Architectural Intelligence, Cognitive Governance, Truth Foundation, Energy Stewardship, and Deterministic Reliability. Covers validation workflows, strictness levels (lenient/moderate/strict), iterative refinement, and batch validation. Provides comprehensive guidance on interpreting validation scores, handling violations, and integrating governance checks into AI systems.",
+      "type": "notebook",
+      "include_in_tools": true,
+      "reason_for_include_or_exclude": "INCLUDE: Contains production-ready validation code that can be wrapped as reusable tools. The FiveLawsValidator class provides complete functionality for validating text against governance standards with clear parameters (text, strictness, context) and structured outputs (scores, violations, recommendations, pass/fail status). Demonstrates iterative refinement workflows and batch validation suitable for scientific quality control applications. Code is self-contained and generalizable beyond the tutorial dataset."
+    },
+    {
+      "path": "tutorials/governed_response_composer_tutorial.ipynb",
+      "title": "Governed Response Composer Tutorial",
+      "description": "Demonstrates SIM-ONE's self-governing AI response system that automatically generates and refines responses until they meet governance standards. Integrates MCP (Model Context Protocol) for consulting SIM-ONE Framework documentation during generation and uses Five Laws Validator for iterative refinement. Covers the complete workflow from prompt to validated governed response, including parameter configuration (threshold, max_iterations, strictness), refinement process, and comparison of initial vs final responses.",
+      "type": "notebook",
+      "include_in_tools": true,
+      "reason_for_include_or_exclude": "INCLUDE: Contains sophisticated tool-worthy functionality for generating governed AI responses with automatic validation and refinement. The compose_governed_response() function provides a complete workflow that integrates MCP consultation and iterative validation, making it valuable for scientific applications requiring governed AI outputs. Code demonstrates advanced integration patterns, handles complex workflows, and provides clear metrics for quality assessment. While it requires Claude CLI and MCP server, the core validation and refinement logic is reusable."
+    },
+    {
+      "path": "tutorials/rep_reasoning_tutorial.ipynb",
+      "title": "REP Reasoning & Explanation Protocol Tutorial",
+      "description": "Demonstrates SIM-ONE's REP protocol for performing advanced multi-modal reasoning across five types: deductive (formal logic rules), inductive (pattern discovery from observations), abductive (best explanation inference), analogical (knowledge transfer between domains), and causal (cause-effect relationship analysis). Provides comprehensive examples of each reasoning type with structured input/output formats, confidence scoring, reasoning chains, and practical use cases for scientific problem-solving.",
+      "type": "notebook",
+      "include_in_tools": true,
+      "reason_for_include_or_exclude": "INCLUDE: Contains powerful reasoning capabilities that are highly valuable for scientific data analysis. The rep.perform_reasoning() method provides five distinct reasoning modes with clear input formats and structured outputs including conclusions, confidence scores, reasoning chains, and evidence tracking. Each reasoning type is self-contained and reusable: deductive for rule application, inductive for pattern discovery, abductive for diagnosis, analogical for problem-solving by similarity, and causal for timeline analysis. Code is production-ready and applicable to diverse scientific domains."
+    },
+    {
+      "path": "tutorials/vvp_validation_tutorial.ipynb",
+      "title": "VVP Validation & Verification Protocol Tutorial",
+      "description": "Demonstrates SIM-ONE's VVP protocol for validating logical rule structures before they're used in reasoning operations. Covers rule syntax and structure validation, conflict detection between contradicting rules, completeness checking for rule coverage, and integration with REP for safe deductive reasoning. Provides comprehensive examples of valid/invalid rules, conflict resolution, and debugging workflows with detailed validation reports including status, errors, warnings, and suggestions.",
+      "type": "notebook",
+      "include_in_tools": true,
+      "reason_for_include_or_exclude": "INCLUDE: Contains essential validation functionality for rule-based reasoning systems in scientific applications. The vvp.execute() method provides comprehensive rule validation with clear input structure (rules list with premises and conclusions) and detailed validation outputs (status, conflicts, completeness, errors, suggestions). Demonstrates practical integration with REP protocol for ensuring logical consistency before reasoning. Code is self-contained, handles complex validation scenarios, and is generalizable to any domain requiring rule verification."
+    }
+  ]
+}

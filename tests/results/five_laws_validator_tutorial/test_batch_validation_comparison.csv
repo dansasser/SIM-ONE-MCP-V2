@@ -1,0 +1,6 @@
+id,text_preview,overall,law1,law2,law3,law4,law5,status,violations,recommendations
+1,Use a coordinated multi-protocol architecture for ...,65.0,95.0,65.0,50.0,65.0,50.0,CONDITIONAL,0,6
+2,Just throw everything at a large language model.,46.0,30.0,50.0,50.0,50.0,50.0,FAIL,1,10
+3,"Apply ESL for emotion analysis, then REP for reaso...",53.0,50.0,65.0,50.0,50.0,50.0,FAIL,0,9
+4,Try different approaches until something works.,50.0,50.0,50.0,50.0,50.0,50.0,FAIL,0,10
+5,Implement deterministic workflows with protocol sp...,65.0,80.0,80.0,50.0,50.0,65.0,CONDITIONAL,0,5

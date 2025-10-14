@@ -1,0 +1,88 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-8.4.2, pluggy-1.6.0 -- /mnt/c/Users/admin/OneDrive/Desktop/paper2agent/SIM-ONE-MCP-v2/repo/SIM-ONE-env/bin/python3
+cachedir: .pytest_cache
+benchmark: 5.1.0 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+rootdir: /mnt/c/Users/admin/OneDrive/Desktop/paper2agent/SIM-ONE-MCP-v2
+plugins: anyio-4.11.0, asyncio-1.2.0, benchmark-5.1.0, cov-7.0.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 1 item
+
+tests/code/esl_emotional_analysis_tutorial/esl_analyze_emotional_progression_test.py::test_esl_analyze_emotional_progression FAILED [100%]
+
+=================================== FAILURES ===================================
+____________________ test_esl_analyze_emotional_progression ____________________
+
+server = FastMCP('esl_emotional_analysis_tutorial')
+esl_analyze_emotional_progression_inputs = {'out_prefix': 'test_emotional_progression', 'texts': ["I'm excited to start this project!", 'We hit some roadblocks t... team meeting, I feel more hopeful about finding solutions.', 'Success! We solved the problem. Feeling accomplished.']}
+test_directories = {'input_dir': PosixPath('/mnt/c/Users/admin/OneDrive/Desktop/paper2agent/SIM-ONE-MCP-v2/tests/data/esl_emotional_analy...ixPath('/mnt/c/Users/admin/OneDrive/Desktop/paper2agent/SIM-ONE-MCP-v2/tests/results/esl_emotional_analysis_tutorial')}
+
+    @pytest.mark.asyncio
+    async def test_esl_analyze_emotional_progression(server, esl_analyze_emotional_progression_inputs, test_directories):
+        """Test esl_analyze_emotional_progression with exact tutorial example from Example 8."""
+        async with Client(server) as client:
+            result = await client.call_tool("esl_analyze_emotional_progression", esl_analyze_emotional_progression_inputs)
+    
+            # 1. Verify result structure
+            assert hasattr(result, 'data'), "Result should have data attribute"
+            result_data = result.data
+    
+            # 2. Verify message field exists
+            assert "message" in result_data, "Result should contain 'message' field"
+            message = result_data["message"]
+    
+            # 3. Verify message shows correct number of texts analyzed (4 from tutorial)
+            assert "4" in message, f"Message should indicate 4 texts analyzed, got: {message}"
+    
+            # 4. Verify artifacts exist (should have CSV and visualization)
+            assert "artifacts" in result_data, "Result should contain 'artifacts' field"
+            assert len(result_data["artifacts"]) == 2, f"Should have 2 artifacts (CSV + visualization), got {len(result_data['artifacts'])}"
+    
+            # 5. Verify CSV file exists and has correct structure
+            csv_artifact = [a for a in result_data["artifacts"] if "data" in a["description"].lower()][0]
+            csv_path = pathlib.Path(csv_artifact["path"])
+            assert csv_path.exists(), f"CSV file should exist at {csv_path}"
+    
+            # 6. Load and verify CSV structure
+            df = pd.read_csv(csv_path)
+            assert len(df) == 4, f"Should have 4 rows (one per text), got {len(df)}"
+    
+            # Verify columns from tutorial
+            expected_columns = ["step", "text_preview", "emotion", "valence", "intensity"]
+            assert all(col in df.columns for col in expected_columns), f"Missing expected columns. Got: {df.columns.tolist()}"
+    
+            # 7. Verify step sequence
+            assert df["step"].tolist() == [1, 2, 3, 4], f"Steps should be [1, 2, 3, 4], got {df['step'].tolist()}"
+    
+            # 8. Verify emotional arc from tutorial output
+            # Tutorial shows: 📊 Emotional arc: ['joy', 'fear', 'neutral', 'pride']
+            emotional_arc = df["emotion"].tolist()
+            expected_arc = ["joy", "fear", "neutral", "pride"]
+>           assert emotional_arc == expected_arc, f"Expected emotional arc {expected_arc}, got {emotional_arc}"
+E           AssertionError: Expected emotional arc ['joy', 'fear', 'neutral', 'pride'], got ['joy', 'neutral', 'hope', 'neutral']
+E           assert ['joy', 'neut...e', 'neutral'] == ['joy', 'fear...ral', 'pride']
+E             
+E             At index 1 diff: 'neutral' != 'fear'
+E             
+E             Full diff:
+E               [
+E                   'joy',
+E             -     'fear',...
+E             
+E             ...Full output truncated (7 lines hidden), use '-vv' to show
+
+tests/code/esl_emotional_analysis_tutorial/esl_analyze_emotional_progression_test.py:118: AssertionError
+=========================== short test summary info ============================
+FAILED tests/code/esl_emotional_analysis_tutorial/esl_analyze_emotional_progression_test.py::test_esl_analyze_emotional_progression
+============================== 1 failed in 32.61s ==============================
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-8.4.2, pluggy-1.6.0 -- /mnt/c/Users/admin/OneDrive/Desktop/paper2agent/SIM-ONE-MCP-v2/repo/SIM-ONE-env/bin/python3
+cachedir: .pytest_cache
+benchmark: 5.1.0 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+rootdir: /mnt/c/Users/admin/OneDrive/Desktop/paper2agent/SIM-ONE-MCP-v2
+plugins: anyio-4.11.0, asyncio-1.2.0, benchmark-5.1.0, cov-7.0.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 1 item
+
+tests/code/esl_emotional_analysis_tutorial/esl_analyze_emotional_progression_test.py::test_esl_analyze_emotional_progression PASSED [100%]
+
+============================== 1 passed in 22.23s ==============================

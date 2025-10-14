@@ -1,0 +1,10 @@
+{
+  "total_responses": 5,
+  "passed": 0,
+  "conditional": 2,
+  "failed": 3,
+  "average_compliance": 55.8,
+  "best_response_id": 1,
+  "worst_response_id": 2,
+  "strictness_level": "moderate"
+}

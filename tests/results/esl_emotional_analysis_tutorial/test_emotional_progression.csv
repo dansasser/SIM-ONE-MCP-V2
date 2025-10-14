@@ -1,0 +1,5 @@
+step,text_preview,emotion,valence,intensity
+1,I'm excited to start this project!,joy,0.7,0.6
+2,"We hit some roadblocks today, feeling a bit discou",neutral,0.0,0.0
+3,"After the team meeting, I feel more hopeful about ",hope,0.7,0.6
+4,Success! We solved the problem. Feeling accomplish,neutral,0.0,0.0
