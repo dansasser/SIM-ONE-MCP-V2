@@ -22,7 +22,7 @@ mcp.mount(esl_emotional_analysis_tutorial_mcp)
 mcp.mount(five_laws_validator_tutorial_mcp)
 
 # Get the underlying FastAPI app
-app = mcp.get_app()
+app = mcp.http_app
 
 # ============================================================================
 # Test REST Endpoints (No SSE Required)
