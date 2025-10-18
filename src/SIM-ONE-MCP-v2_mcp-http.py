@@ -16,10 +16,18 @@ This MCP Server contains tools extracted from the following tutorial files:
 """
 
 from fastmcp import FastMCP
+from starlette.middleware import Middleware
 
 # Import statements (alphabetical order)
 from tools.esl_emotional_analysis_tutorial import esl_emotional_analysis_tutorial_mcp
 from tools.five_laws_validator_tutorial import five_laws_validator_tutorial_mcp
+
+# Import authentication
+from auth.database import init_database
+from auth.middleware import APIKeyAuthMiddleware
+
+# Initialize database
+init_database()
 
 # Server definition and mounting
 mcp = FastMCP(name="SIM-ONE-MCP-v2")
@@ -27,4 +35,22 @@ mcp.mount(esl_emotional_analysis_tutorial_mcp)
 mcp.mount(five_laws_validator_tutorial_mcp)
 
 if __name__ == "__main__":
-    mcp.run(transport="streamable-http", host="0.0.0.0", port=8000)
+    print("="*80)
+    print("SIM-ONE-MCP-v2 Server with API Key Authentication")
+    print("="*80)
+    print("\nMCP Endpoint: http://0.0.0.0:8000/mcp")
+    print("Transport: streamable-http")
+    print("Authentication: API Key Required")
+    print("\nProvide API key in one of these headers:")
+    print("  - Authorization: Bearer <your-api-key>")
+    print("  - X-API-Key: <your-api-key>")
+    print("\nRate Limit: 1000 requests per hour per key")
+    print("="*80)
+    print()
+    
+    mcp.run(
+        transport="streamable-http",
+        host="0.0.0.0",
+        port=8000,
+        middleware=[Middleware(APIKeyAuthMiddleware)]
+    )

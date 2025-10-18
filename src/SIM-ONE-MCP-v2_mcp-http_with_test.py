@@ -16,6 +16,13 @@ from typing import Optional, Literal
 from tools.esl_emotional_analysis_tutorial import esl_emotional_analysis_tutorial_mcp
 from tools.five_laws_validator_tutorial import five_laws_validator_tutorial_mcp, validator
 
+# Import authentication
+from auth.database import init_database
+from auth.middleware import APIKeyAuthMiddleware
+
+# Initialize authentication database
+init_database()
+
 # Server definition and mounting
 mcp = FastMCP(name="SIM-ONE-MCP-v2")
 mcp.mount(esl_emotional_analysis_tutorial_mcp)
@@ -23,6 +30,9 @@ mcp.mount(five_laws_validator_tutorial_mcp)
 
 # Get the underlying FastAPI app
 app = mcp.get_app()
+
+# Add API key authentication middleware
+app.add_middleware(APIKeyAuthMiddleware)
 
 # ============================================================================
 # Test REST Endpoints (No SSE Required)
@@ -166,6 +176,14 @@ async def view_recent_logs():
     """View last 10 lines from each log file."""
     import os
     from pathlib import Path
+    from collections import deque
+
+    # Feature flag: disabled by default for security
+    if os.getenv("SIMONE_ENABLE_LOGS_VIEW", "0") != "1":
+        return JSONResponse({
+            "status": "error",
+            "message": "Logs view endpoint is disabled. Set SIMONE_ENABLE_LOGS_VIEW=1 to enable."
+        }, status_code=404)
 
     PROJECT_ROOT = Path(__file__).parent.parent
     LOG_DIR = PROJECT_ROOT / "logs"
@@ -173,10 +191,10 @@ async def view_recent_logs():
     logs = {}
     for log_file in LOG_DIR.glob("*.log"):
         try:
-            with open(log_file, 'r', encoding='utf-8') as f:
-                lines = f.readlines()
-                logs[log_file.name] = lines[-10:] if len(lines) > 10 else lines
-        except Exception as e:
+            # Efficient tail: keep only last N lines without loading entire file
+            with open(log_file, 'r', encoding='utf-8', errors='replace') as f:
+                logs[log_file.name] = list(deque(f, maxlen=10))
+        except (OSError, UnicodeDecodeError) as e:
             logs[log_file.name] = [f"Error reading log: {e}"]
 
     return JSONResponse({
