@@ -9,7 +9,7 @@ This module implements automated response generation and refinement using:
 
 Designed as a modular component imported by five_laws_validator_tutorial.py.
 
-Extracted from: https://github.com/lse-ai4gov/SIM-ONE/blob/main/tutorials/governed_response_composer_tutorial.ipynb
+Extracted from: https://github.com/dansasser/SIM-ONE/blob/main/tutorials/governed_response_composer_tutorial.ipynb
 """
 
 import subprocess
@@ -19,6 +19,14 @@ from pathlib import Path
 from datetime import datetime
 from typing import Optional, Literal, Dict, Any, Tuple
 import os
+import sys
+
+# Import logging configuration
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from logging_config import setup_logger
+
+# Initialize logger
+logger = setup_logger("governed_response_composer", "governed_response_composer.log")
 
 # Project paths
 PROJECT_ROOT = Path(__file__).parent.parent.parent.resolve()
@@ -46,6 +54,7 @@ def check_claude_cli_available() -> Tuple[bool, str]:
         - (True, "Claude CLI available: version") if working
         - (False, "error message") if not available
     """
+    logger.debug("Checking Claude CLI availability")
     try:
         result = subprocess.run(
             ["claude", "--version"],
@@ -54,14 +63,19 @@ def check_claude_cli_available() -> Tuple[bool, str]:
             timeout=5
         )
         if result.returncode == 0:
+            logger.info(f"Claude CLI check | status=available | version={result.stdout.strip()}")
             return True, f"Claude CLI available: {result.stdout.strip()}"
         else:
+            logger.warning(f"Claude CLI check | status=error | stderr={result.stderr}")
             return False, f"Claude CLI error: {result.stderr}"
     except FileNotFoundError:
+        logger.warning("Claude CLI check | status=not_found | reason=FileNotFoundError")
         return False, "Claude CLI not found. Install with: pip install claude-cli"
     except subprocess.TimeoutExpired:
+        logger.warning("Claude CLI check | status=timeout | timeout=5s")
         return False, "Claude CLI check timed out"
     except Exception as e:
+        logger.error(f"Claude CLI check | status=exception | error={str(e)}")
         return False, f"Unexpected error checking Claude CLI: {str(e)}"
 
 
@@ -81,6 +95,8 @@ def _generate_response(prompt: str, is_initial: bool = True, timeout: int = 120)
         RuntimeError: If Claude CLI fails or times out
         FileNotFoundError: If Claude CLI not installed
     """
+    logger.debug(f"Generating response | is_initial={is_initial} | timeout={timeout}s | prompt_length={len(prompt)}")
+
     # Add MCP connector instruction for initial generation
     if is_initial:
         full_prompt = f"""Before responding, use the SIM-ONE MCP connector to review the latest SIM-ONE Framework documentation, especially the Five Laws of Cognitive Governance.
@@ -93,6 +109,7 @@ Generate a response that adheres to the SIM-ONE Framework's Five Laws."""
         full_prompt = prompt
 
     try:
+        logger.info(f"Calling Claude CLI | is_initial={is_initial} | full_prompt_length={len(full_prompt)}")
         result = subprocess.run(
             ["claude", "-p", full_prompt],
             capture_output=True,
@@ -101,13 +118,18 @@ Generate a response that adheres to the SIM-ONE Framework's Five Laws."""
         )
 
         if result.returncode != 0:
+            logger.error(f"Claude CLI error | returncode={result.returncode} | stderr={result.stderr}")
             raise RuntimeError(f"Claude Code CLI error: {result.stderr}")
 
+        response_length = len(result.stdout.strip())
+        logger.info(f"Claude CLI success | response_length={response_length}")
         return result.stdout.strip()
 
     except subprocess.TimeoutExpired:
+        logger.error(f"Claude CLI timeout | timeout={timeout}s")
         raise RuntimeError(f"Claude Code CLI timed out after {timeout} seconds")
     except FileNotFoundError:
+        logger.error("Claude CLI not found | reason=FileNotFoundError")
         raise FileNotFoundError(
             "Claude Code CLI not found. Please install and authenticate:\n"
             "  pip install claude-cli\n"
@@ -131,10 +153,12 @@ class IterationDatabase:
 
     def __init__(self, db_path: Path):
         """Initialize database connection and create tables if needed."""
+        logger.debug(f"Initializing iteration database | db_path={db_path}")
         self.db_path = db_path
         self.conn = sqlite3.connect(str(db_path))
         self.conn.row_factory = sqlite3.Row
         self._create_tables()
+        logger.info(f"Iteration database initialized | db_path={db_path}")
 
     def _create_tables(self):
         """Create database tables if they don't exist."""
@@ -176,13 +200,16 @@ class IterationDatabase:
         Returns:
             session_id (int)
         """
+        logger.debug(f"Creating session | threshold={threshold} | strictness={strictness} | prompt_length={len(prompt)}")
         cursor = self.conn.cursor()
         cursor.execute("""
             INSERT INTO sessions (prompt, threshold, strictness)
             VALUES (?, ?, ?)
         """, (prompt, threshold, strictness))
         self.conn.commit()
-        return cursor.lastrowid
+        session_id = cursor.lastrowid
+        logger.info(f"Session created | session_id={session_id}")
+        return session_id
 
     def add_iteration(
         self,
@@ -195,6 +222,7 @@ class IterationDatabase:
         recommendations: list
     ):
         """Store iteration result."""
+        logger.debug(f"Storing iteration | session_id={session_id} | iteration_num={iteration_num} | score={score:.1f}% | passed={passed}")
         cursor = self.conn.cursor()
         cursor.execute("""
             INSERT INTO iterations
@@ -210,6 +238,7 @@ class IterationDatabase:
             json.dumps(recommendations)
         ))
         self.conn.commit()
+        logger.info(f"Iteration stored | session_id={session_id} | iteration_num={iteration_num} | violations={len(violations)} | recommendations={len(recommendations)}")
 
     def get_session_history(self, session_id: int) -> list:
         """Retrieve all iterations for a session."""
@@ -330,23 +359,27 @@ def compose_governed_response_impl(
     Returns:
         Dictionary with initial_response, final_response, iterations, passed, improvement
     """
+    logger.info(f"[START] compose_governed_response | threshold={threshold} | max_iterations={max_iterations} | strictness={strictness} | prompt_length={len(prompt) if prompt else 0}")
+
     # === Validation ===
     if prompt is None or not prompt.strip():
+        logger.warning("Validation failed | reason=empty_prompt")
         return {
             "error": "Prompt cannot be empty",
             "status": "failed",
-            "reference": "https://github.com/lse-ai4gov/SIM-ONE/blob/main/tutorials/governed_response_composer_tutorial.ipynb"
+            "reference": "https://github.com/dansasser/SIM-ONE/blob/main/tutorials/governed_response_composer_tutorial.ipynb"
         }
 
     # === Check Claude CLI availability ===
     cli_available, cli_message = check_claude_cli_available()
     if not cli_available:
+        logger.warning(f"Claude CLI unavailable | message={cli_message}")
         return {
             "error": "Claude CLI not available",
             "message": cli_message,
             "status": "unavailable",
             "suggestion": "Use five_laws_validate_text or five_laws_iterative_validate for validation-only workflows",
-            "reference": "https://github.com/lse-ai4gov/SIM-ONE/blob/main/tutorials/governed_response_composer_tutorial.ipynb"
+            "reference": "https://github.com/dansasser/SIM-ONE/blob/main/tutorials/governed_response_composer_tutorial.ipynb"
         }
 
     # === Setup ===
@@ -361,16 +394,16 @@ def compose_governed_response_impl(
 
     try:
         # === Step 1: Generate initial response ===
-        print(f"[1/3] Generating initial response...")
+        logger.info(f"[START] Step 1/3: Generating initial response | prompt_length={len(prompt)}")
         initial_text = _generate_response(prompt, is_initial=True)
-        print(f"      Generated {len(initial_text)} characters")
+        logger.info(f"[SUCCESS] Step 1/3 | generated_length={len(initial_text)}")
 
         # === Step 2: Validate initial response ===
-        print(f"[2/3] Validating initial response...")
+        logger.info(f"[START] Step 2/3: Validating initial response | text_length={len(initial_text)}")
         initial_validation = validator_instance.validate(initial_text, strictness=strictness)
         initial_score = initial_validation["scores"]["overall_compliance"]
         initial_passed = initial_validation["pass_fail_status"] == "PASS"
-        print(f"      Score: {initial_score:.1f}%")
+        logger.info(f"[SUCCESS] Step 2/3 | initial_score={initial_score:.1f}% | passed={initial_passed}")
 
         # Store initial iteration
         db.add_iteration(
@@ -385,7 +418,7 @@ def compose_governed_response_impl(
 
         # === Step 3: Check if initial response already passed ===
         if initial_passed:
-            print(f"      [PASS] Initial response passes validation!")
+            logger.info(f"[PASS] Initial response passed validation | score={initial_score:.1f}% | threshold={threshold}% | iterations=0")
 
             db.close()
 
@@ -407,11 +440,11 @@ def compose_governed_response_impl(
                 "improvement": 0.0,
                 "status": "success",
                 "database_path": str(db_path.resolve()),
-                "reference": "https://github.com/lse-ai4gov/SIM-ONE/blob/main/tutorials/governed_response_composer_tutorial.ipynb"
+                "reference": "https://github.com/dansasser/SIM-ONE/blob/main/tutorials/governed_response_composer_tutorial.ipynb"
             }
 
         # === Step 4: Iterative refinement loop ===
-        print(f"[3/3] Refining response...")
+        logger.info(f"[START] Step 3/3: Iterative refinement | initial_score={initial_score:.1f}% | threshold={threshold}% | max_iterations={max_iterations}")
         current_text = initial_text
         current_validation = initial_validation
         current_score = initial_score
@@ -419,10 +452,10 @@ def compose_governed_response_impl(
         for iteration_num in range(1, max_iterations + 1):
             # Check if passed
             if current_validation["pass_fail_status"] == "PASS":
-                print(f"      [PASS] Validation passed after {iteration_num - 1} iterations!")
+                logger.info(f"[PASS] Validation passed | iterations={iteration_num - 1} | final_score={current_score:.1f}%")
                 break
 
-            print(f"      [Iteration {iteration_num}] Score {current_score:.1f}% - refining...")
+            logger.info(f"[REFINE] Iteration {iteration_num}/{max_iterations} | current_score={current_score:.1f}% | target={threshold}%")
 
             # Create refinement prompt
             refinement_prompt = _create_refinement_prompt(
@@ -439,7 +472,7 @@ def compose_governed_response_impl(
             current_validation = validator_instance.validate(current_text, strictness=strictness)
             current_score = current_validation["scores"]["overall_compliance"]
 
-            print(f"      [Iteration {iteration_num}] New score: {current_score:.1f}%")
+            logger.info(f"[RESULT] Iteration {iteration_num} complete | new_score={current_score:.1f}% | improvement={current_score - initial_score:+.1f}%")
 
             # Store iteration
             db.add_iteration(
@@ -458,7 +491,7 @@ def compose_governed_response_impl(
 
         final_iteration_num = iteration_num if iteration_num > 0 else 0
 
-        print(f"\n[+] Complete! Final score: {current_score:.1f}% | Improvement: {improvement:+.1f}% | Status: {'PASS' if passed else 'FAIL'}\n")
+        logger.info(f"[COMPLETE] Governed response composition complete | final_score={current_score:.1f}% | initial_score={initial_score:.1f}% | improvement={improvement:+.1f}% | iterations={final_iteration_num} | passed={passed}")
 
         # === Step 6: Save summary JSON ===
         summary_file = OUTPUT_DIR / f"{out_prefix}_summary.json"
@@ -474,10 +507,13 @@ def compose_governed_response_impl(
             "passed": passed,
             "timestamp": timestamp
         }
+        logger.debug(f"Saving summary JSON | file={summary_file}")
         with open(summary_file, 'w') as f:
             json.dump(summary_data, f, indent=2)
+        logger.info(f"Summary saved | file={summary_file} | size={summary_file.stat().st_size} bytes")
 
         db.close()
+        logger.debug(f"Database connection closed | db_path={db_path}")
 
         # === Return results ===
         return {
@@ -499,14 +535,15 @@ def compose_governed_response_impl(
             "status": "success" if passed else "partial_success",
             "database_path": str(db_path.resolve()),
             "summary_file": str(summary_file.resolve()),
-            "reference": "https://github.com/lse-ai4gov/SIM-ONE/blob/main/tutorials/governed_response_composer_tutorial.ipynb"
+            "reference": "https://github.com/dansasser/SIM-ONE/blob/main/tutorials/governed_response_composer_tutorial.ipynb"
         }
 
     except Exception as e:
+        logger.error(f"[ERROR] Governed response composition failed | error={str(e)} | error_type={type(e).__name__}")
         db.close()
         return {
             "error": str(e),
             "status": "failed",
             "database_path": str(db_path.resolve()),
-            "reference": "https://github.com/lse-ai4gov/SIM-ONE/blob/main/tutorials/governed_response_composer_tutorial.ipynb"
+            "reference": "https://github.com/dansasser/SIM-ONE/blob/main/tutorials/governed_response_composer_tutorial.ipynb"
         }

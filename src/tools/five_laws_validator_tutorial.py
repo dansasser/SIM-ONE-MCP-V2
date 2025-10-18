@@ -6,7 +6,7 @@ This MCP Server provides 3 tools:
 2. five_laws_batch_validate: Compare multiple texts and identify best performers
 3. five_laws_iterative_validate: Iterative refinement workflow with feedback tracking
 
-All tools extracted from https://github.com/lse-ai4gov/SIM-ONE/blob/main/tutorials/five_laws_validator_tutorial.ipynb
+All tools extracted from https://github.com/dansasser/SIM-ONE/blob/main/tutorials/five_laws_validator_tutorial.ipynb
 """
 
 # Standard imports
@@ -22,6 +22,11 @@ import matplotlib
 matplotlib.use('Agg')  # Non-interactive backend for server
 import matplotlib.pyplot as plt
 import seaborn as sns
+
+# Logging
+import sys
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from logging_config import setup_logger
 
 # Project structure
 PROJECT_ROOT = Path(__file__).parent.parent.parent.resolve()
@@ -40,6 +45,9 @@ timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
 # MCP server instance
 five_laws_validator_tutorial_mcp = FastMCP(name="five_laws_validator_tutorial")
+
+# Initialize logger
+logger = setup_logger("five_laws_validator", "five_laws_validator.log")
 
 # Configure plotting
 plt.rcParams["figure.dpi"] = 300
@@ -133,7 +141,11 @@ class FiveLawsValidator:
         Returns:
             Dictionary with scores, violations, recommendations, and pass/fail status
         """
+        # Log validation start
+        logger.debug(f"[CORE] validator.validate() called | strictness={strictness} | text_length={len(text) if text else 0}")
+
         if not text or not text.strip():
+            logger.error("[CORE] Validation failed: empty text provided")
             raise ValueError("Text to validate cannot be empty")
 
         text_lower = text.lower()
@@ -186,6 +198,9 @@ class FiveLawsValidator:
         else:
             status = "FAIL"
 
+        # Log validation completion
+        logger.debug(f"[CORE] validator.validate() completed | overall_score={overall_compliance:.1f}% | status={status} | violations={len(all_violations)} | recommendations={len(all_recommendations)}")
+
         return {
             "scores": {
                 "law1_architectural_intelligence": law1_score,
@@ -220,8 +235,15 @@ def five_laws_validate_text(
     Validate single text against Five Laws of Cognitive Governance with configurable strictness.
     Input is text content to validate and output is validation scores, violations, recommendations, and pass/fail status.
     """
+    import time
+    start_time = time.time()
+
+    # Log invocation
+    logger.info(f"[START] five_laws_validate_text invoked | strictness={strictness} | text_length={len(text) if text else 0} | context_domain={context_domain} | context_use_case={context_use_case}")
+
     # Input validation
     if text is None:
+        logger.error("Validation failed: Text to validate must be provided")
         raise ValueError("Text to validate must be provided")
 
     # Build context if provided
@@ -234,7 +256,17 @@ def five_laws_validate_text(
             context["use_case"] = context_use_case
 
     # Validate text
+    logger.debug(f"Validating text with validator instance | strictness={strictness}")
     result = validator.validate(text, strictness=strictness, context=context)
+
+    # Log validation results
+    overall_score = result['scores']['overall_compliance']
+    status = result['pass_fail_status']
+    violations_count = len(result.get('violations', []))
+    recommendations_count = len(result.get('recommendations', []))
+
+    logger.info(f"Validation completed | overall_score={overall_score:.1f}% | status={status} | violations={violations_count} | recommendations={recommendations_count}")
+    logger.debug(f"Individual scores | law1={result['scores']['law1_architectural_intelligence']:.1f} | law2={result['scores']['law2_cognitive_governance']:.1f} | law3={result['scores']['law3_truth_foundation']:.1f} | law4={result['scores']['law4_energy_stewardship']:.1f} | law5={result['scores']['law5_deterministic_reliability']:.1f}")
 
     # Set output prefix
     if out_prefix is None:
@@ -282,9 +314,14 @@ def five_laws_validate_text(
             for s in result["strengths"]:
                 f.write(f"  - {s}\n")
 
+    # Log performance metrics
+    duration = time.time() - start_time
+    logger.info(f"[SUCCESS] five_laws_validate_text completed | duration={duration:.3f}s | output_files=2")
+    logger.debug(f"Output files | results={results_file.name} | summary={summary_file.name}")
+
     return {
         "message": f"Validation {'passed' if result['pass_fail_status'] == 'PASS' else 'failed'}: {result['scores']['overall_compliance']:.1f}% compliance",
-        "reference": "https://github.com/lse-ai4gov/SIM-ONE/blob/main/tutorials/five_laws_validator_tutorial.ipynb",
+        "reference": "https://github.com/dansasser/SIM-ONE/blob/main/tutorials/five_laws_validator_tutorial.ipynb",
         "artifacts": [
             {
                 "description": "Validation results JSON",
@@ -308,11 +345,19 @@ def five_laws_batch_validate(
     Compare multiple texts and identify best performers for Five Laws compliance.
     Input is list of text strings and output is comparison table, statistics, and visualization of compliance scores.
     """
+    import time
+    start_time = time.time()
+
+    # Log invocation
+    logger.info(f"[START] five_laws_batch_validate invoked | batch_size={len(texts) if texts else 0} | strictness={strictness}")
+
     # Input validation
     if texts is None:
+        logger.error("Batch validation failed: List of texts to validate must be provided")
         raise ValueError("List of texts to validate must be provided")
 
     if not isinstance(texts, list) or len(texts) == 0:
+        logger.error(f"Batch validation failed: texts must be a non-empty list | type={type(texts)} | length={len(texts) if isinstance(texts, list) else 'N/A'}")
         raise ValueError("texts must be a non-empty list")
 
     # Set output prefix
@@ -320,9 +365,15 @@ def five_laws_batch_validate(
         out_prefix = f"five_laws_batch_{timestamp}"
 
     # Validate all texts
+    logger.debug(f"Starting batch validation loop for {len(texts)} texts")
     results = []
     for i, text in enumerate(texts, 1):
         result = validator.validate(text, strictness=strictness)
+        score = result["scores"]["overall_compliance"]
+        status = result["pass_fail_status"]
+
+        logger.debug(f"Text {i}/{len(texts)} validated | score={score:.1f}% | status={status}")
+
         results.append({
             "id": i,
             "text_preview": text[:50] + "..." if len(text) > 50 else text,
@@ -355,6 +406,9 @@ def five_laws_batch_validate(
         "worst_response_id": int(df.loc[df['overall'].idxmin(), 'id']),
         "strictness_level": strictness
     }
+
+    # Log statistics
+    logger.info(f"Batch statistics | passed={stats['passed']}/{stats['total_responses']} | avg_score={stats['average_compliance']:.1f}% | best_id={stats['best_response_id']} | worst_id={stats['worst_response_id']}")
 
     # Save statistics
     stats_file = OUTPUT_DIR / f"{out_prefix}_statistics.json"
@@ -389,9 +443,17 @@ def five_laws_batch_validate(
     plt.savefig(viz_file, dpi=300, bbox_inches='tight')
     plt.close()
 
+    # Log visualization creation
+    logger.debug(f"Visualization created | file={viz_file.name} | chart_type=grouped_bar | laws=5")
+
+    # Log performance metrics
+    duration = time.time() - start_time
+    logger.info(f"[SUCCESS] five_laws_batch_validate completed | duration={duration:.3f}s | batch_size={len(texts)} | passed_ratio={stats['passed']}/{stats['total_responses']} | output_files=3")
+    logger.debug(f"Output files | table={table_file.name} | stats={stats_file.name} | viz={viz_file.name}")
+
     return {
         "message": f"Batch validation completed: {stats['passed']}/{stats['total_responses']} passed, avg {stats['average_compliance']:.1f}%",
-        "reference": "https://github.com/lse-ai4gov/SIM-ONE/blob/main/tutorials/five_laws_validator_tutorial.ipynb",
+        "reference": "https://github.com/dansasser/SIM-ONE/blob/main/tutorials/five_laws_validator_tutorial.ipynb",
         "artifacts": [
             {
                 "description": "Comparison table CSV",
@@ -420,8 +482,15 @@ def five_laws_iterative_validate(
     Validate text with comprehensive feedback tracking for iterative refinement workflow.
     Input is text to validate and threshold, output is validation scores with detailed recommendations for improvement.
     """
+    import time
+    start_time = time.time()
+
+    # Log invocation
+    logger.info(f"[START] five_laws_iterative_validate invoked | threshold={threshold} | strictness={strictness} | text_length={len(text) if text else 0}")
+
     # Input validation
     if text is None:
+        logger.error("Iterative validation failed: Text to validate must be provided")
         raise ValueError("Text to validate must be provided")
 
     # Set output prefix
@@ -429,12 +498,21 @@ def five_laws_iterative_validate(
         out_prefix = f"five_laws_iterative_{timestamp}"
 
     # Validate the text
+    logger.debug(f"Validating text iteratively | strictness={strictness} | threshold={threshold}")
     result = validator.validate(text, strictness=strictness)
 
     # Extract key metrics
     overall_compliance = result["scores"]["overall_compliance"]
     status = result["pass_fail_status"]
     passed = overall_compliance >= threshold
+
+    # Log validation results
+    violations_count = len(result.get("violations", []))
+    recommendations_count = len(result.get("recommendations", []))
+    gap = threshold - overall_compliance if not passed else 0.0
+
+    logger.info(f"Iterative validation completed | overall_score={overall_compliance:.1f}% | threshold={threshold}% | passed={passed} | gap={gap:.1f} | violations={violations_count} | recommendations={recommendations_count}")
+    logger.debug(f"Individual scores | law1={result['scores']['law1_architectural_intelligence']:.1f} | law2={result['scores']['law2_cognitive_governance']:.1f} | law3={result['scores']['law3_truth_foundation']:.1f} | law4={result['scores']['law4_energy_stewardship']:.1f} | law5={result['scores']['law5_deterministic_reliability']:.1f}")
 
     # Build comprehensive response
     response = {
@@ -463,6 +541,7 @@ def five_laws_iterative_validate(
     report_file = OUTPUT_DIR / f"{out_prefix}_report.json"
     with open(report_file, 'w') as f:
         json.dump(response, f, indent=2)
+    logger.debug(f"Report file created | file={report_file.name} | size={report_file.stat().st_size} bytes")
 
     # Create iteration guidance document
     guidance_file = OUTPUT_DIR / f"{out_prefix}_guidance.txt"
@@ -500,6 +579,8 @@ def five_laws_iterative_validate(
             f.write("  2. Re-validate with same threshold and strictness\n")
             f.write("  3. Repeat until threshold is met or maximum iterations reached\n")
 
+    logger.debug(f"Guidance file created | file={guidance_file.name} | size={guidance_file.stat().st_size} bytes | passed={passed}")
+
     # Create scores breakdown visualization
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
 
@@ -536,9 +617,17 @@ def five_laws_iterative_validate(
     plt.savefig(viz_file, dpi=300, bbox_inches='tight')
     plt.close()
 
+    # Log visualization creation
+    logger.debug(f"Visualization created | file={viz_file.name} | chart_type=dual_chart | laws=5")
+
+    # Log performance metrics
+    duration = time.time() - start_time
+    logger.info(f"[SUCCESS] five_laws_iterative_validate completed | duration={duration:.3f}s | passed={passed} | gap={gap:.1f} | output_files=3")
+    logger.debug(f"Output files | report={report_file.name} | guidance={guidance_file.name} | viz={viz_file.name}")
+
     return {
         "message": response["message"],
-        "reference": "https://github.com/lse-ai4gov/SIM-ONE/blob/main/tutorials/five_laws_validator_tutorial.ipynb",
+        "reference": "https://github.com/dansasser/SIM-ONE/blob/main/tutorials/five_laws_validator_tutorial.ipynb",
         "artifacts": [
             {
                 "description": "Detailed validation report JSON",
@@ -599,9 +688,13 @@ try:
 
         If Claude CLI unavailable: Returns status message directing to validator-only tools
 
-        Reference: https://github.com/lse-ai4gov/SIM-ONE/blob/main/tutorials/governed_response_composer_tutorial.ipynb
+        Reference: https://github.com/dansasser/SIM-ONE/blob/main/tutorials/governed_response_composer_tutorial.ipynb
         """
-        return compose_governed_response_impl(
+        # Log wrapper invocation
+        logger.info(f"[WRAPPER] compose_governed_response invoked | threshold={threshold} | max_iterations={max_iterations} | strictness={strictness} | prompt_length={len(prompt) if prompt else 0}")
+
+        # Call implementation (which has comprehensive logging)
+        result = compose_governed_response_impl(
             prompt=prompt,
             threshold=threshold,
             max_iterations=max_iterations,
@@ -610,11 +703,19 @@ try:
             validator_instance=validator  # Pass existing validator instance
         )
 
+        # Log wrapper completion
+        status = result.get("status", "unknown")
+        passed = result.get("passed", False)
+        iterations = result.get("iterations", 0)
+        logger.info(f"[WRAPPER] compose_governed_response completed | status={status} | passed={passed} | iterations={iterations}")
+
+        return result
+
     # Log successful registration
-    print("[+] Governed Response Composer tool registered successfully")
+    logger.info("Governed Response Composer tool registered successfully")
 
 except ImportError as e:
     # Module not available - skip tool registration
     # This is expected if governed_response_composer.py doesn't exist yet
-    print(f"[!] Governed Response Composer not available: {e}")
-    print("[!] Only validation tools will be available")
+    logger.warning(f"Governed Response Composer not available: {e}")
+    logger.warning("Only validation tools will be available")

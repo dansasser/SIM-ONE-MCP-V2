@@ -7,7 +7,7 @@ This MCP Server provides 4 tools for multi-dimensional emotional analysis:
 3. esl_recommend_response_tone: Generate empathetic response recommendations
 4. esl_analyze_text_file: Analyze emotional content from text files
 
-All tools extracted from `https://github.com/lse-ai4gov/SIM-ONE/blob/main/tutorials/esl_emotional_analysis_tutorial.ipynb`.
+All tools extracted from `https://github.com/dansasser/SIM-ONE/blob/main/tutorials/esl_emotional_analysis_tutorial.ipynb`.
 """
 
 # Standard imports
@@ -164,7 +164,7 @@ def esl_analyze_emotion(
 
     return {
         "message": message,
-        "reference": "https://github.com/lse-ai4gov/SIM-ONE/blob/main/tutorials/esl_emotional_analysis_tutorial.ipynb",
+        "reference": "https://github.com/dansasser/SIM-ONE/blob/main/tutorials/esl_emotional_analysis_tutorial.ipynb",
         "artifacts": [
             {
                 "description": "Emotional analysis results",
@@ -247,7 +247,7 @@ def esl_analyze_emotional_progression(
 
     return {
         "message": message,
-        "reference": "https://github.com/lse-ai4gov/SIM-ONE/blob/main/tutorials/esl_emotional_analysis_tutorial.ipynb",
+        "reference": "https://github.com/dansasser/SIM-ONE/blob/main/tutorials/esl_emotional_analysis_tutorial.ipynb",
         "artifacts": [
             {
                 "description": "Emotional progression data",
@@ -325,7 +325,7 @@ def esl_recommend_response_tone(
 
     return {
         "message": message,
-        "reference": "https://github.com/lse-ai4gov/SIM-ONE/blob/main/tutorials/esl_emotional_analysis_tutorial.ipynb",
+        "reference": "https://github.com/dansasser/SIM-ONE/blob/main/tutorials/esl_emotional_analysis_tutorial.ipynb",
         "artifacts": [
             {
                 "description": "Response tone recommendation",
@@ -388,7 +388,7 @@ def esl_analyze_text_file(
 
     return {
         "message": message,
-        "reference": "https://github.com/lse-ai4gov/SIM-ONE/blob/main/tutorials/esl_emotional_analysis_tutorial.ipynb",
+        "reference": "https://github.com/dansasser/SIM-ONE/blob/main/tutorials/esl_emotional_analysis_tutorial.ipynb",
         "artifacts": [
             {
                 "description": "File emotional analysis results",
