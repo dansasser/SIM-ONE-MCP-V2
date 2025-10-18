@@ -243,7 +243,7 @@ async with client:
 
 - Keys start with `sk_simone_`
 - 32 random alphanumeric characters
-- Total length: ~43 characters
+- Total length: 42 characters
 - Example: `sk_simone_a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6`
 
 ### Database Security

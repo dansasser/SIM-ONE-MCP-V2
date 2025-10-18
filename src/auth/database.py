@@ -3,7 +3,6 @@ Database module for API key storage and management.
 """
 import sqlite3
 from pathlib import Path
-from datetime import datetime
 from typing import Optional
 
 # Database path
@@ -13,8 +12,12 @@ DB_PATH = PROJECT_ROOT / "data" / "api_keys.db"
 
 def get_db_connection() -> sqlite3.Connection:
     """Get a connection to the API keys database."""
+    # Ensure the database directory exists
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(DB_PATH))
     conn.row_factory = sqlite3.Row
+    # Set busy timeout to reduce "database is locked" errors
+    conn.execute("PRAGMA busy_timeout=5000")
     return conn
 
 
@@ -50,7 +53,15 @@ def init_database() -> None:
     cursor.execute("""
         CREATE INDEX IF NOT EXISTS idx_is_active ON api_keys(is_active)
     """)
-    
+
+    cursor.execute("""
+        CREATE INDEX IF NOT EXISTS idx_key_prefix ON api_keys(key_prefix)
+    """)
+
+    # Enable WAL mode for better concurrency
+    cursor.execute("PRAGMA journal_mode=WAL")
+    cursor.execute("PRAGMA busy_timeout=5000")
+
     conn.commit()
     conn.close()
 

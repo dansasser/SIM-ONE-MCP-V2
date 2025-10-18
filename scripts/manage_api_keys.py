@@ -12,7 +12,7 @@ SRC_PATH = Path(__file__).parent.parent / "src"
 sys.path.insert(0, str(SRC_PATH))
 
 from auth.database import init_database, get_key_by_prefix
-from auth.key_manager import create_api_key, list_api_keys, revoke_api_key
+from auth.key_manager import create_api_key, list_api_keys, revoke_api_key, get_key_prefix
 
 
 def cmd_create(args):
@@ -35,7 +35,7 @@ def cmd_create(args):
     print(f"API Key: {api_key}")
     print()
     print(f"Key ID: {key_id}")
-    print(f"Prefix: {api_key[:18]}")
+    print(f"Prefix: {get_key_prefix(api_key)}")
     print(f"User: {args.email}")
     print()
     print("Use this key in your MCP client configuration:")

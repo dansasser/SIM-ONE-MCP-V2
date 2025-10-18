@@ -31,7 +31,7 @@ def verify_key_hash(key: str, key_hash: str) -> bool:
     """Verify a key against its hash."""
     try:
         return bcrypt.checkpw(key.encode('utf-8'), key_hash.encode('utf-8'))
-    except Exception:
+    except (ValueError, TypeError):
         return False
 
 
@@ -71,33 +71,32 @@ def verify_api_key(key: str) -> bool:
     """
     if not key or not key.startswith("sk_simone_"):
         return False
-    
-    # Hash the provided key
-    key_hash = hash_api_key(key)
-    
-    # Check against all active keys (we need to check each one since bcrypt hashes are unique)
-    # This is not efficient for large numbers of keys, but works for reasonable scale
+
+    # Get the key prefix to narrow down the search
+    prefix = get_key_prefix(key)
+
+    # Query only keys matching this prefix (much more efficient)
     from .database import get_db_connection
-    
+
     conn = get_db_connection()
     cursor = conn.cursor()
-    
+
     cursor.execute("""
         SELECT key_hash FROM api_keys
-        WHERE is_active = 1
-    """)
-    
+        WHERE is_active = 1 AND key_prefix = ?
+    """, (prefix,))
+
     rows = cursor.fetchall()
     conn.close()
-    
-    # Check each hash
+
+    # Check each hash (should be very few or just one)
     for row in rows:
         stored_hash = row['key_hash']
         if verify_key_hash(key, stored_hash):
             # Valid key found, update last used
             update_last_used(stored_hash)
             return True
-    
+
     return False
 
 

@@ -1,12 +1,13 @@
 """
 Authentication middleware for MCP server.
 """
+import anyio
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 from starlette.requests import Request
-from .key_manager import verify_key_hash, hash_api_key
-from .rate_limiter import check_rate_limit
-from .database import get_db_connection
+from .key_manager import verify_key_hash, get_key_prefix
+from .rate_limiter import check_rate_limit, get_retry_after_seconds
+from .database import get_db_connection, update_last_used
 
 
 class APIKeyAuthMiddleware(BaseHTTPMiddleware):
@@ -23,9 +24,9 @@ class APIKeyAuthMiddleware(BaseHTTPMiddleware):
         api_key_header = request.headers.get("X-API-Key", "")
         
         api_key = None
-        
-        # Check Authorization header (Bearer token)
-        if auth_header.startswith("Bearer "):
+
+        # Check Authorization header (Bearer token) - case insensitive
+        if auth_header.lower().startswith("bearer "):
             api_key = auth_header[7:].strip()
         # Check X-API-Key header
         elif api_key_header:
@@ -51,9 +52,9 @@ class APIKeyAuthMiddleware(BaseHTTPMiddleware):
                 status_code=401
             )
         
-        # Verify key against database
-        key_valid, key_hash = self._verify_key(api_key)
-        
+        # Verify key against database (run in thread to avoid blocking event loop)
+        key_valid, key_hash = await anyio.to_thread.run_sync(self._verify_key, api_key)
+
         if not key_valid:
             return JSONResponse(
                 {
@@ -62,20 +63,21 @@ class APIKeyAuthMiddleware(BaseHTTPMiddleware):
                 },
                 status_code=401
             )
-        
+
         # Check rate limit
         if not check_rate_limit(key_hash):
+            retry_after = get_retry_after_seconds(key_hash)
             return JSONResponse(
                 {
                     "error": "Rate limit exceeded",
                     "message": "Too many requests. Rate limit: 1000 requests per hour"
                 },
-                status_code=429
+                status_code=429,
+                headers={"Retry-After": str(retry_after)}
             )
-        
-        # Update last used timestamp
-        from .database import update_last_used
-        update_last_used(key_hash)
+
+        # Update last used timestamp (run in thread to avoid blocking event loop)
+        await anyio.to_thread.run_sync(update_last_used, key_hash)
         
         # Key is valid, proceed with request
         response = await call_next(request)
@@ -86,23 +88,26 @@ class APIKeyAuthMiddleware(BaseHTTPMiddleware):
         Verify API key against database.
         Returns (is_valid, key_hash)
         """
-        # Get all active keys from database
+        # Get the key prefix to narrow down the search
+        prefix = get_key_prefix(api_key)
+
+        # Query only keys matching this prefix (much more efficient)
         conn = get_db_connection()
         cursor = conn.cursor()
-        
+
         cursor.execute("""
             SELECT key_hash FROM api_keys
-            WHERE is_active = 1
-        """)
-        
+            WHERE is_active = 1 AND key_prefix = ?
+        """, (prefix,))
+
         rows = cursor.fetchall()
         conn.close()
-        
-        # Check each hash
+
+        # Check each hash (should be very few or just one)
         for row in rows:
             stored_hash = row['key_hash']
             if verify_key_hash(api_key, stored_hash):
                 return True, stored_hash
-        
+
         return False, ""
 

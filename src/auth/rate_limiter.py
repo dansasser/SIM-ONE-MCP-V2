@@ -60,12 +60,31 @@ class RateLimiter:
         with self.lock:
             now = datetime.now()
             cutoff = now - timedelta(hours=self.window_hours)
-            
+
             key_requests = self.requests[key_hash]
             key_requests[:] = [req_time for req_time in key_requests if req_time > cutoff]
-            
+
             return len(key_requests)
-    
+
+    def get_retry_after_seconds(self, key_hash: str) -> int:
+        """Get seconds until the next request is allowed (0 if allowed now)."""
+        with self.lock:
+            now = datetime.now()
+            cutoff = now - timedelta(hours=self.window_hours)
+
+            key_requests = self.requests[key_hash]
+            key_requests[:] = [req_time for req_time in key_requests if req_time > cutoff]
+
+            if len(key_requests) < self.max_requests:
+                return 0
+
+            # Find the oldest request and calculate when it expires
+            earliest = min(key_requests)
+            reset_at = earliest + timedelta(hours=self.window_hours)
+            seconds_until_reset = max(0, int((reset_at - now).total_seconds()))
+
+            return seconds_until_reset
+
     def reset_key(self, key_hash: str) -> None:
         """Reset rate limit for a specific key."""
         with self.lock:
@@ -85,6 +104,11 @@ def check_rate_limit(key_hash: str) -> bool:
 def get_usage(key_hash: str) -> int:
     """Get current usage count for a key."""
     return _rate_limiter.get_usage(key_hash)
+
+
+def get_retry_after_seconds(key_hash: str) -> int:
+    """Get seconds until the next request is allowed (0 if allowed now)."""
+    return _rate_limiter.get_retry_after_seconds(key_hash)
 
 
 def reset_key(key_hash: str) -> None:
