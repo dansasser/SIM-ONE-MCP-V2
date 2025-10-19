@@ -39,7 +39,6 @@ logs/
 
 # Repositories
 repo/
-repos/
 
 # IDE
 .vscode/
