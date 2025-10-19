@@ -22,6 +22,7 @@ from tools.five_laws_validator_tutorial import five_laws_validator_tutorial_mcp,
 # Import authentication
 from auth.database import init_database
 from auth.middleware import APIKeyAuthMiddleware
+from auth.fastmcp_auth_middleware import FastMCPAPIKeyAuthMiddleware
 
 # Initialize authentication database
 init_database()
@@ -36,7 +37,7 @@ app = FastAPI(
     version="2.0.0"
 )
 
-# Add API key authentication middleware
+# Add API key authentication middleware for FastAPI routes (not /mcp)
 app.add_middleware(APIKeyAuthMiddleware)
 
 # ============================================================================
@@ -44,6 +45,11 @@ app.add_middleware(APIKeyAuthMiddleware)
 # ============================================================================
 
 mcp = FastMCP(name="SIM-ONE-MCP-v2")
+
+# Add authentication middleware to FastMCP
+mcp.add_middleware(FastMCPAPIKeyAuthMiddleware())
+
+# Mount tool modules
 mcp.mount(esl_emotional_analysis_tutorial_mcp)
 mcp.mount(five_laws_validator_tutorial_mcp)
 

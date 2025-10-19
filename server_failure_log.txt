@@ -1,0 +1,86 @@
+Server Startup and Connection Log - 2025-10-19 10:55:32
+================================================================
+
+ANALYSIS: Authentication middleware NOT being called during connection
+
+SERVER STARTUP:
+---------------
+INFO:     Started server process [20340]
+INFO:     Waiting for application startup.
+2025-10-19 10:55:32,127 - mcp.server.streamable_http_manager - INFO - StreamableHTTP session manager started
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+
+INITIAL CONNECTION ATTEMPTS (FAILED):
+--------------------------------------
+INFO:     127.0.0.1:56031 - "GET /mcp HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:56034 - "GET /mcp HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:56039 - "GET /.well-known/oauth-authorization-server/mcp HTTP/1.1" 404 Not Found
+
+SUCCESSFUL SESSION CREATION:
+-----------------------------
+2025-10-19 10:55:44,519 - mcp.server.streamable_http_manager - DEBUG - Creating new transport
+2025-10-19 10:55:44,519 - mcp.server.streamable_http_manager - INFO - Created new transport with session ID: 0a3deae26471416a973247078b0b745a
+
+PROTOCOL HANDSHAKE (SUCCESS):
+------------------------------
+INFO:     127.0.0.1:56040 - "POST /mcp HTTP/1.1" 200 OK
+Result: Protocol version 2025-06-18, server SIM-ONE-MCP-v2 v1.16.0
+
+PROTOCOL METHODS (SUCCESS):
+----------------------------
+INFO:     127.0.0.1:56042 - "POST /mcp HTTP/1.1" 202 Accepted
+Received: InitializedNotification
+
+TOOLS LIST REQUEST (SUCCESS):
+------------------------------
+INFO:     127.0.0.1:56043 - "POST /mcp HTTP/1.1" 200 OK
+Processing request of type ListToolsRequest
+Result: All 8 tools returned successfully:
+  1. esl_analyze_emotion
+  2. esl_analyze_emotional_progression
+  3. esl_recommend_response_tone
+  4. esl_analyze_text_file
+  5. five_laws_validate_text
+  6. five_laws_batch_validate
+  7. five_laws_iterative_validate
+  8. compose_governed_response
+
+CONNECTION ERROR (EXPECTED ON WINDOWS):
+---------------------------------------
+2025-10-19 10:55:44,537 - asyncio - ERROR - Exception in callback _ProactorBasePipeTransport._call_connection_lost(None)
+ConnectionResetError: [WinError 10054] An existing connection was forcibly closed by the remote host
+
+CRITICAL OBSERVATION:
+=====================
+NO AUTHENTICATION MIDDLEWARE LOGS PRESENT
+
+Expected logs from auth_middleware.py:
+- "AUTH MIDDLEWARE: on_call_tool triggered"
+- "[OK] Got HTTP request object"
+- "[OK] Extracted headers dict"
+- etc.
+
+REASON:
+-------
+Middleware hooks on_call_tool() which only runs for TOOL CALLS, not protocol methods.
+Protocol methods like tools/list, initialize, ping DO NOT trigger on_call_tool.
+
+WHAT'S MISSING:
+===============
+No actual TOOL CALL attempt shown in these logs.
+
+To test authentication, need to see logs from an actual tool call like:
+- POST /mcp with method: "tools/call"
+- params: {name: "five_laws_validate_text", arguments: {...}}
+
+CONCLUSION:
+===========
+These logs show:
+[OK] Server started successfully
+[OK] MCP session created
+[OK] Protocol handshake completed
+[OK] Tools list retrieved (8 tools)
+[UNKNOWN] Authentication - no tool call attempted
+
+STATUS: Need to see logs from an actual tool call to verify authentication.

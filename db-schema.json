@@ -1,0 +1,62 @@
+{
+  "tables": {
+    "api_keys": {
+      "columns": {
+        "id": {
+          "type": "integer",
+          "primary_key": true,
+          "required": true,
+          "ui": "hidden"
+        },
+        "key_hash": {
+          "type": "string",
+          "required": true,
+          "ui": "hidden"
+        },
+        "key_prefix": {
+          "type": "string",
+          "required": true,
+          "ui": "text_input"
+        },
+        "user_email": {
+          "type": "string",
+          "required": true,
+          "ui": "email_input"
+        },
+        "description": {
+          "type": "string",
+          "required": false,
+          "ui": "textarea"
+        },
+        "created_at": {
+          "type": "timestamp",
+          "required": true,
+          "default": "CURRENT_TIMESTAMP",
+          "ui": "datetime_picker"
+        },
+        "last_used_at": {
+          "type": "timestamp",
+          "required": false,
+          "ui": "datetime_picker"
+        },
+        "is_active": {
+          "type": "boolean",
+          "required": true,
+          "default": true,
+          "ui": "checkbox"
+        },
+        "expires_at": {
+          "type": "timestamp",
+          "required": false,
+          "ui": "datetime_picker"
+        }
+      },
+      "relationships": {}
+    }
+  },
+  "metadata": {
+    "database_type": "sqlite",
+    "schema_source": "live",
+    "database_path": "./data/api_keys.db"
+  }
+}

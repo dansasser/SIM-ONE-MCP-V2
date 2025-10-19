@@ -1,0 +1,6 @@
+[submodule "admin-dashboard"]
+	path = admin-dashboard
+	url = https://github.com/dansasser/SIM-ONE-MCP-V2-admin-dashboard.git
+[submodule "repos/SIM-ONE"]
+	path = repos/SIM-ONE
+	url = https://github.com/dansasser/SIM-ONE.git
