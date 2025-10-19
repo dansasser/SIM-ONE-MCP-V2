@@ -15,10 +15,29 @@ class APIKeyAuthMiddleware(BaseHTTPMiddleware):
     Middleware to authenticate API requests using API keys.
     Checks Authorization or X-API-Key headers.
     """
-    
+
+    # Paths that don't require authentication
+    EXEMPT_PATHS = {
+        "/",
+        "/docs",
+        "/openapi.json",
+        "/test/health",
+        "/.well-known/oauth-authorization-server",
+        "/.well-known/oauth-authorization-server/mcp",
+        "/mcp/.well-known/oauth-authorization-server",
+    }
+
     async def dispatch(self, request: Request, call_next):
         """Process the request and check API key."""
-        
+
+        # Skip auth for exempt paths
+        if request.url.path in self.EXEMPT_PATHS:
+            return await call_next(request)
+
+        # Skip auth for entire /mcp/* path (FastMCP handles its own protocol)
+        if request.url.path.startswith("/mcp"):
+            return await call_next(request)
+
         # Extract API key from headers
         auth_header = request.headers.get("Authorization", "")
         api_key_header = request.headers.get("X-API-Key", "")

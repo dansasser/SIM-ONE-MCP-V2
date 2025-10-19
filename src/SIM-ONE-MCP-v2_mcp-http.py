@@ -16,7 +16,6 @@ This MCP Server contains tools extracted from the following tutorial files:
 """
 
 from fastmcp import FastMCP
-from starlette.middleware import Middleware
 
 # Import statements (alphabetical order)
 from tools.esl_emotional_analysis_tutorial import esl_emotional_analysis_tutorial_mcp
@@ -24,13 +23,18 @@ from tools.five_laws_validator_tutorial import five_laws_validator_tutorial_mcp
 
 # Import authentication
 from auth.database import init_database
-from auth.middleware import APIKeyAuthMiddleware
+from auth.auth_middleware import APIKeyAuthenticationMiddleware
 
 # Initialize database
 init_database()
 
-# Server definition and mounting
+# Server definition
 mcp = FastMCP(name="SIM-ONE-MCP-v2")
+
+# Add authentication middleware
+mcp.add_middleware(APIKeyAuthenticationMiddleware())
+
+# Mount tools
 mcp.mount(esl_emotional_analysis_tutorial_mcp)
 mcp.mount(five_laws_validator_tutorial_mcp)
 
@@ -51,6 +55,5 @@ if __name__ == "__main__":
     mcp.run(
         transport="streamable-http",
         host="0.0.0.0",
-        port=8000,
-        middleware=[Middleware(APIKeyAuthMiddleware)]
+        port=8000
     )
