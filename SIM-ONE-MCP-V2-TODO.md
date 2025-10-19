@@ -207,7 +207,7 @@ async def on_request(self, context, call_next):  # ← RIGHT HOOK
 
 **Database:**
 - `C:\Claude\SIM-ONE-MCP-V2\data\api_keys.db`
-- Active key: `sk_simone_uiDejaAs6WFL3AMS3PWjLOA3Rn7ZZqdk`
+- Active key: `sk_simone_EXAMPLE_KEY_HERE` (use actual key from database)
 
 **Venv:**
 - `C:\Users\admin\OneDrive\Desktop\Paper2Agent\sim-one-venv`
