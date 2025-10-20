@@ -13,47 +13,108 @@ This MCP Server contains tools extracted from the following tutorial files:
     - five_laws_validate_text: Validate single text against Five Laws with configurable strictness
     - five_laws_batch_validate: Compare multiple texts and identify best performers
     - five_laws_iterative_validate: Iterative refinement workflow with feedback tracking
+
+AUTHENTICATION: Handled by nginx reverse proxy (see auth_service.py)
+This server runs without authentication - nginx verifies API keys before forwarding requests.
 """
 
-from fastmcp import FastMCP
+import logging
 
-# Import statements (alphabetical order)
+from fastmcp import FastMCP
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request as StarletteRequest
+from starlette.middleware import Middleware
+
+# Configure root logger for detailed debugging
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+# Enable DEBUG logging for ALL FastMCP components
+logging.getLogger("fastmcp").setLevel(logging.DEBUG)
+logging.getLogger("fastmcp.server").setLevel(logging.DEBUG)
+logging.getLogger("mcp").setLevel(logging.DEBUG)
+
+# HTTP Request Logging Middleware
+class HTTPRequestLoggingMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: StarletteRequest, call_next):
+        print("=" * 80)
+        print("HTTP REQUEST")
+        print("=" * 80)
+        print(f"Method: {request.method}")
+        print(f"URL: {request.url}")
+        print(f"Path: {request.url.path}")
+        print(f"Query: {request.url.query}")
+        print(f"\nHEADERS:")
+        for name, value in request.headers.items():
+            print(f"  {name}: {value}")
+
+        # Read the entire body
+        body_bytes = await request.body()
+
+        print(f"\nBODY ({len(body_bytes)} bytes):")
+        if body_bytes:
+            try:
+                print(f"  {body_bytes.decode('utf-8')[:2000]}")
+            except:
+                print(f"  (binary data: {body_bytes[:100]}...)")
+        else:
+            print("  (empty)")
+        print("=" * 80)
+
+        # Replace the request body with our logged body (simpler approach)
+        request._body = body_bytes
+
+        response = await call_next(request)
+
+        print(f"RESPONSE: {response.status_code}")
+        print("=" * 80)
+
+        return response
+
+# Import tool modules
 from tools.esl_emotional_analysis_tutorial import esl_emotional_analysis_tutorial_mcp
 from tools.five_laws_validator_tutorial import five_laws_validator_tutorial_mcp
 
 # Import authentication
-from auth.database import init_database
-from auth.auth_middleware import APIKeyAuthenticationMiddleware
+from auth.database_token_verifier import DatabaseTokenVerifier
 
-# Initialize database
-init_database()
+logger.info("=" * 80)
+logger.info("SIM-ONE-MCP-V2 SERVER INITIALIZATION")
+logger.info("=" * 80)
 
-# Server definition
-mcp = FastMCP(name="SIM-ONE-MCP-v2")
-
-# Add authentication middleware
-mcp.add_middleware(APIKeyAuthenticationMiddleware())
+# Create FastMCP server WITH authentication
+logger.info("Creating FastMCP server with auth...")
+mcp = FastMCP(
+    name="SIM-ONE-MCP-v2",
+    auth=DatabaseTokenVerifier()
+)
+logger.info("[OK] FastMCP server created")
 
 # Mount tools
+logger.info("Mounting tools...")
 mcp.mount(esl_emotional_analysis_tutorial_mcp)
 mcp.mount(five_laws_validator_tutorial_mcp)
+logger.info("[OK] Tools mounted")
 
 if __name__ == "__main__":
     print("="*80)
-    print("SIM-ONE-MCP-v2 Server with API Key Authentication")
+    print("SIM-ONE-MCP-v2 Server")
     print("="*80)
     print("\nMCP Endpoint: http://0.0.0.0:8000/mcp")
     print("Transport: streamable-http")
-    print("Authentication: API Key Required")
-    print("\nProvide API key in one of these headers:")
-    print("  - Authorization: Bearer <your-api-key>")
-    print("  - X-API-Key: <your-api-key>")
-    print("\nRate Limit: 1000 requests per hour per key")
+    print("Authentication: API Key (DatabaseTokenVerifier)")
+    print("Database: data/api_keys.db")
     print("="*80)
     print()
-    
+
+    logger.info("Starting server with HTTP request logging...")
+
     mcp.run(
         transport="streamable-http",
         host="0.0.0.0",
-        port=8000
+        port=8000,
+        middleware=[Middleware(HTTPRequestLoggingMiddleware)]
     )

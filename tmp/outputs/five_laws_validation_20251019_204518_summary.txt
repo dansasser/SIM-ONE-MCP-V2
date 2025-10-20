@@ -1,0 +1,26 @@
+Five Laws Validation Report
+================================================================================
+
+Overall Compliance: 50.0%
+Status: FAIL
+Strictness: moderate (threshold: 70.0%)
+
+Individual Law Scores:
+  1. Architectural Intelligence:    50.0%
+  2. Cognitive Governance:          50.0%
+  3. Truth Foundation:              50.0%
+  4. Energy Stewardship:            50.0%
+  5. Deterministic Reliability:     50.0%
+
+Recommendations (10)
+  - Law 1 (Architectural Intelligence): Add explicit mentions of relevant principles
+  - Law 1 (Architectural Intelligence): Remove or rephrase negative patterns
+  - Law 2 (Cognitive Governance): Add explicit mentions of relevant principles
+  - Law 2 (Cognitive Governance): Remove or rephrase negative patterns
+  - Law 3 (Truth Foundation): Add explicit mentions of relevant principles
+  - Law 3 (Truth Foundation): Remove or rephrase negative patterns
+  - Law 4 (Energy Stewardship): Add explicit mentions of relevant principles
+  - Law 4 (Energy Stewardship): Remove or rephrase negative patterns
+  - Law 5 (Deterministic Reliability): Add explicit mentions of relevant principles
+  - Law 5 (Deterministic Reliability): Remove or rephrase negative patterns
+
