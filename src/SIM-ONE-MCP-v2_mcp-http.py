@@ -78,14 +78,19 @@ class HTTPRequestLoggingMiddleware(BaseHTTPMiddleware):
 from tools.esl_emotional_analysis_tutorial import esl_emotional_analysis_tutorial_mcp
 from tools.five_laws_validator_tutorial import five_laws_validator_tutorial_mcp
 
+# Import authentication
+from auth.database_token_verifier import DatabaseTokenVerifier
+
 logger.info("=" * 80)
-logger.info("SIM-ONE-MCP-V2 SERVER INITIALIZATION (No Auth - Nginx Proxy)")
+logger.info("SIM-ONE-MCP-V2 SERVER INITIALIZATION")
 logger.info("=" * 80)
 
-# Create FastMCP server WITHOUT authentication
-# Authentication is handled by nginx proxy before requests reach this server
-logger.info("Creating FastMCP server (no auth)...")
-mcp = FastMCP(name="SIM-ONE-MCP-v2")
+# Create FastMCP server WITH authentication
+logger.info("Creating FastMCP server with auth...")
+mcp = FastMCP(
+    name="SIM-ONE-MCP-v2",
+    auth=DatabaseTokenVerifier()
+)
 logger.info("[OK] FastMCP server created")
 
 # Mount tools
@@ -96,13 +101,12 @@ logger.info("[OK] Tools mounted")
 
 if __name__ == "__main__":
     print("="*80)
-    print("SIM-ONE-MCP-v2 Server (No Auth - Nginx Proxy)")
+    print("SIM-ONE-MCP-v2 Server")
     print("="*80)
     print("\nMCP Endpoint: http://0.0.0.0:8000/mcp")
     print("Transport: streamable-http")
-    print("Authentication: HANDLED BY NGINX PROXY")
-    print("\nThis server expects nginx to verify API keys before forwarding requests.")
-    print("Direct access to this port should be blocked by firewall.")
+    print("Authentication: API Key (DatabaseTokenVerifier)")
+    print("Database: data/api_keys.db")
     print("="*80)
     print()
 
