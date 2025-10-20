@@ -1,0 +1,94 @@
+Session-Based Auth Failure - on_request Hook - 2025-10-19 12:06:31
+================================================================
+
+PROBLEM: on_request hook fires too late - session already created without authentication
+
+CRITICAL DISCOVERY:
+==================
+The on_request middleware hook does NOT fire during session creation.
+It only fires for MCP protocol method calls (ListToolsRequest, etc.)
+By that time, the session is already created and X-API-Key is gone.
+
+TIMELINE FROM LOGS:
+===================
+
+12:06:31.178 - Session created with ID: 1a89f2a658154a33
+  - NO authentication middleware logs
+  - X-API-Key header sent here but middleware NOT triggered
+
+12:06:31.191 - Initialize response sent
+  - Session already established
+  
+12:06:31.499 - ListToolsRequest received
+  - AUTH MIDDLEWARE: on_request triggered (FIRST TIME!)
+  - Headers: ['accept', 'mcp-session-id', 'content-type', 'host', 'content-length']
+  - X-API-Key: NOT PRESENT (already gone)
+  - Session ID: 1a89f2a658154a33
+  - Authenticated sessions count: 0
+  - FAIL: Unauthenticated session
+
+12:07:58.252 - ListResourcesRequest received
+  - Same failure pattern
+
+12:07:59.675 - ListResourceTemplatesRequest received  
+  - Same failure pattern
+
+RESULT:
+=======
+Codex shows:
+- Status: enabled
+- Auth: Unsupported
+- Tools: (none)
+- Resources: (none)
+
+All requests fail with: "Unauthenticated session - provide valid API key to authenticate"
+
+ROOT CAUSE:
+===========
+FastMCP Middleware hooks (on_request, on_call_tool, etc.) do NOT fire during 
+the initial HTTP POST that creates the transport/session.
+
+They ONLY fire for MCP protocol method calls that happen AFTER session creation:
+- ListToolsRequest
+- ListResourcesRequest
+- ListResourceTemplatesRequest
+- Tool calls
+- etc.
+
+The X-API-Key header is sent in the INITIAL HTTP POST that creates the session,
+which happens BEFORE any middleware hooks can run.
+
+WHAT WE'VE TRIED:
+=================
+❌ Attempt 1-5: Various auth approaches (documented in memory)
+❌ Attempt 6: on_call_tool hook - fires only for tool calls, not initialization
+❌ Attempt 7: on_request hook - fires only for protocol methods, not initialization
+
+WHAT WE LEARNED:
+================
+MCP streamable-http flow:
+1. Client sends POST /mcp with X-API-Key header
+2. Server creates session (NO middleware hooks fire here)
+3. Server responds with session ID
+4. Client sends protocol method calls with session ID (middleware hooks fire here)
+
+FastMCP middleware intercepts step 4, not step 2.
+
+THE REAL PROBLEM:
+=================
+We need to intercept step 2 (session creation), but FastMCP middleware
+doesn't provide a hook that fires during session creation.
+
+Middleware hooks only fire AFTER the session is established and protocol
+methods are being called.
+
+POSSIBLE SOLUTIONS:
+===================
+1. Custom Starlette middleware (bypass FastMCP, intercept raw HTTP)
+2. FastMCP server lifecycle hooks (if they exist)
+3. Patch streamable_http_manager session creation
+4. Use different transport (SSE instead of HTTP)
+5. Remove authentication entirely (not acceptable)
+
+STATUS: We cannot use FastMCP Middleware for session-level authentication.
+        Need to find a different interception point.

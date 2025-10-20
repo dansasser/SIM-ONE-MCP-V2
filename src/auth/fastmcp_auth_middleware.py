@@ -14,11 +14,25 @@ class FastMCPAPIKeyAuthMiddleware(Middleware):
     Checks Authorization or X-API-Key headers.
     """
 
+    def __init__(self) -> None:
+        """Create the middleware with in-memory session tracking."""
+        super().__init__()
+        self._authenticated_sessions: dict[str, str] = {}
+
     async def on_request(self, context: MiddlewareContext, call_next):
         """Process the request and check API key."""
 
-        # Get HTTP headers from FastMCP context
-        headers = get_http_headers()
+        # Get ALL HTTP headers from FastMCP context (case-insensitive)
+        raw_headers = get_http_headers(include_all=True)
+        headers = {name.lower(): value for name, value in raw_headers.items()}
+
+        # Allow previously authenticated sessions to bypass re-validation
+        session_id = headers.get("mcp-session-id")
+        if session_id and session_id in self._authenticated_sessions:
+            cached_hash = self._authenticated_sessions[session_id]
+            if hasattr(context, 'fastmcp_context') and context.fastmcp_context:
+                context.fastmcp_context.set_state("api_key_hash", cached_hash)
+            return await call_next(context)
 
         # Extract API key from headers (case-insensitive)
         auth_header = headers.get("authorization", "")
@@ -46,6 +60,10 @@ class FastMCPAPIKeyAuthMiddleware(Middleware):
 
         if not key_valid:
             raise ToolError("Invalid API key. The provided API key is invalid or has been revoked")
+
+        # Cache authenticated session for future requests if possible
+        if session_id:
+            self._authenticated_sessions[session_id] = key_hash
 
         # Store authenticated key info in context for tools to use if needed
         if hasattr(context, 'fastmcp_context') and context.fastmcp_context:
