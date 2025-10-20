@@ -78,7 +78,7 @@ from tools.five_laws_validator_tutorial import five_laws_validator_tutorial_mcp
 
 # Import authentication
 from auth.database import init_database
-from auth.database_token_verifier import DatabaseTokenVerifier
+from auth.fastmcp_auth_middleware import FastMCPAPIKeyAuthMiddleware
 
 logger.info("=" * 80)
 logger.info("SIM-ONE-MCP-V2 SERVER INITIALIZATION")
@@ -89,22 +89,18 @@ logger.info("Initializing database...")
 init_database()
 logger.info("[OK] Database initialized")
 
-# Create auth verifier instance
-logger.info("Creating DatabaseTokenVerifier instance...")
-auth_verifier = DatabaseTokenVerifier()
-logger.info(f"[OK] Auth verifier created: {type(auth_verifier).__name__}")
-logger.info(f"Auth verifier type: {type(auth_verifier)}")
-logger.info(f"Auth verifier has verify_token: {hasattr(auth_verifier, 'verify_token')}")
-
-# Server definition with TokenVerifier authentication
-logger.info("Creating FastMCP server with auth parameter...")
-logger.info(f"Auth parameter: {auth_verifier}")
+# Server definition with middleware-based authentication
+logger.info("Creating FastMCP server with middleware-based authentication...")
 mcp = FastMCP(
-    name="SIM-ONE-MCP-v2",
-    auth=auth_verifier
+    name="SIM-ONE-MCP-v2"
 )
 logger.info("[OK] FastMCP server created")
 logger.info(f"FastMCP instance: {type(mcp).__name__}")
+
+# Attach API key authentication middleware
+logger.info("Adding FastMCPAPIKeyAuthMiddleware for API key verification...")
+mcp.add_middleware(FastMCPAPIKeyAuthMiddleware())
+logger.info("[OK] Authentication middleware attached")
 
 
 # Mount tools
