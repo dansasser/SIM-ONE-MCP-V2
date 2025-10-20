@@ -29,6 +29,9 @@ class FastMCPAPIKeyAuthMiddleware(Middleware):
         # Allow previously authenticated sessions to bypass re-validation
         session_id = headers.get("mcp-session-id")
         if session_id and session_id in self._authenticated_sessions:
+            cached_hash = self._authenticated_sessions[session_id]
+            if hasattr(context, 'fastmcp_context') and context.fastmcp_context:
+                context.fastmcp_context.set_state("api_key_hash", cached_hash)
             return await call_next(context)
 
         # Extract API key from headers (case-insensitive)
