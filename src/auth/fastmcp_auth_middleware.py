@@ -27,7 +27,7 @@ class FastMCPAPIKeyAuthMiddleware(Middleware):
         headers = {name.lower(): value for name, value in raw_headers.items()}
 
         # Allow previously authenticated sessions to bypass re-validation
-        session_id = headers.get("mcp-session-id")
+        session_id = self._get_session_id(context, headers)
         if session_id and session_id in self._authenticated_sessions:
             cached_hash = self._authenticated_sessions[session_id]
             if hasattr(context, 'fastmcp_context') and context.fastmcp_context:
@@ -71,6 +71,19 @@ class FastMCPAPIKeyAuthMiddleware(Middleware):
 
         # Key is valid, proceed with request
         return await call_next(context)
+
+    def _get_session_id(self, context: MiddlewareContext, headers: dict[str, str]) -> str | None:
+        """Derive the MCP session identifier from headers or the FastMCP context."""
+
+        session_id = headers.get("mcp-session-id")
+
+        if not session_id and hasattr(context, "fastmcp_context") and context.fastmcp_context:
+            try:
+                session_id = context.fastmcp_context.session_id
+            except Exception:
+                session_id = None
+
+        return session_id
 
     def _verify_key(self, api_key: str) -> tuple[bool, str]:
         """
