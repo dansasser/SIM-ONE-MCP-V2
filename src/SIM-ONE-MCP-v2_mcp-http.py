@@ -13,14 +13,17 @@ This MCP Server contains tools extracted from the following tutorial files:
     - five_laws_validate_text: Validate single text against Five Laws with configurable strictness
     - five_laws_batch_validate: Compare multiple texts and identify best performers
     - five_laws_iterative_validate: Iterative refinement workflow with feedback tracking
+
+AUTHENTICATION: Handled by nginx reverse proxy (see auth_service.py)
+This server runs without authentication - nginx verifies API keys before forwarding requests.
 """
 
 import logging
+
 from fastmcp import FastMCP
-from fastmcp.server.middleware.logging import LoggingMiddleware
-from starlette.middleware import Middleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request as StarletteRequest
+from starlette.middleware import Middleware
 
 # Configure root logger for detailed debugging
 logging.basicConfig(
@@ -32,7 +35,6 @@ logger = logging.getLogger(__name__)
 # Enable DEBUG logging for ALL FastMCP components
 logging.getLogger("fastmcp").setLevel(logging.DEBUG)
 logging.getLogger("fastmcp.server").setLevel(logging.DEBUG)
-logging.getLogger("fastmcp.server.auth").setLevel(logging.DEBUG)
 logging.getLogger("mcp").setLevel(logging.DEBUG)
 
 # HTTP Request Logging Middleware
@@ -49,21 +51,21 @@ class HTTPRequestLoggingMiddleware(BaseHTTPMiddleware):
         for name, value in request.headers.items():
             print(f"  {name}: {value}")
 
-        # Try to read body
-        try:
-            body = await request.body()
-            print(f"\nBODY ({len(body)} bytes):")
-            if body:
-                try:
-                    print(f"  {body.decode('utf-8')[:1000]}")
-                except:
-                    print(f"  (binary data: {body[:100]}...)")
-            else:
-                print("  (empty)")
-        except:
-            print("\n  (unable to read body)")
+        # Read the entire body
+        body_bytes = await request.body()
 
+        print(f"\nBODY ({len(body_bytes)} bytes):")
+        if body_bytes:
+            try:
+                print(f"  {body_bytes.decode('utf-8')[:2000]}")
+            except:
+                print(f"  (binary data: {body_bytes[:100]}...)")
+        else:
+            print("  (empty)")
         print("=" * 80)
+
+        # Replace the request body with our logged body (simpler approach)
+        request._body = body_bytes
 
         response = await call_next(request)
 
@@ -72,62 +74,35 @@ class HTTPRequestLoggingMiddleware(BaseHTTPMiddleware):
 
         return response
 
-# Import statements (alphabetical order)
+# Import tool modules
 from tools.esl_emotional_analysis_tutorial import esl_emotional_analysis_tutorial_mcp
 from tools.five_laws_validator_tutorial import five_laws_validator_tutorial_mcp
 
-# Import authentication
-from auth.database import init_database
-from auth.database_token_verifier import DatabaseTokenVerifier
-
 logger.info("=" * 80)
-logger.info("SIM-ONE-MCP-V2 SERVER INITIALIZATION")
+logger.info("SIM-ONE-MCP-V2 SERVER INITIALIZATION (No Auth - Nginx Proxy)")
 logger.info("=" * 80)
 
-# Initialize database
-logger.info("Initializing database...")
-init_database()
-logger.info("[OK] Database initialized")
-
-# Create auth verifier instance
-logger.info("Creating DatabaseTokenVerifier instance...")
-auth_verifier = DatabaseTokenVerifier()
-logger.info(f"[OK] Auth verifier created: {type(auth_verifier).__name__}")
-logger.info(f"Auth verifier type: {type(auth_verifier)}")
-logger.info(f"Auth verifier has verify_token: {hasattr(auth_verifier, 'verify_token')}")
-
-# Server definition with TokenVerifier authentication
-logger.info("Creating FastMCP server with auth parameter...")
-logger.info(f"Auth parameter: {auth_verifier}")
-mcp = FastMCP(
-    name="SIM-ONE-MCP-v2",
-    auth=auth_verifier
-)
+# Create FastMCP server WITHOUT authentication
+# Authentication is handled by nginx proxy before requests reach this server
+logger.info("Creating FastMCP server (no auth)...")
+mcp = FastMCP(name="SIM-ONE-MCP-v2")
 logger.info("[OK] FastMCP server created")
-logger.info(f"FastMCP instance: {type(mcp).__name__}")
-
 
 # Mount tools
+logger.info("Mounting tools...")
 mcp.mount(esl_emotional_analysis_tutorial_mcp)
 mcp.mount(five_laws_validator_tutorial_mcp)
-
-# Add logging middleware to see all incoming requests
-mcp.add_middleware(LoggingMiddleware(
-    include_payloads=True,
-    max_payload_length=2000
-))
+logger.info("[OK] Tools mounted")
 
 if __name__ == "__main__":
     print("="*80)
-    print("SIM-ONE-MCP-v2 Server with API Key Authentication")
+    print("SIM-ONE-MCP-v2 Server (No Auth - Nginx Proxy)")
     print("="*80)
     print("\nMCP Endpoint: http://0.0.0.0:8000/mcp")
     print("Transport: streamable-http")
-    print("Authentication: API Key Required")
-    print("\nProvide API key in one of these headers:")
-    print("  - Authorization: Bearer <your-api-key>")
-    print("  - X-API-Key: <your-api-key>")
-    print("\nRate Limit: 1000 requests per hour per key")
+    print("Authentication: HANDLED BY NGINX PROXY")
+    print("\nThis server expects nginx to verify API keys before forwarding requests.")
+    print("Direct access to this port should be blocked by firewall.")
     print("="*80)
     print()
 

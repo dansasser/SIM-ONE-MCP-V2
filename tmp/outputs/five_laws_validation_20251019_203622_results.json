@@ -1,0 +1,31 @@
+{
+  "text": "the world will end in 2030",
+  "validation_result": {
+    "scores": {
+      "law1_architectural_intelligence": 50.0,
+      "law2_cognitive_governance": 50.0,
+      "law3_truth_foundation": 50.0,
+      "law4_energy_stewardship": 50.0,
+      "law5_deterministic_reliability": 50.0,
+      "overall_compliance": 50.0
+    },
+    "pass_fail_status": "FAIL",
+    "strictness_level": "moderate",
+    "threshold": 70.0,
+    "violations": [],
+    "recommendations": [
+      "Law 1 (Architectural Intelligence): Add explicit mentions of relevant principles",
+      "Law 1 (Architectural Intelligence): Remove or rephrase negative patterns",
+      "Law 2 (Cognitive Governance): Add explicit mentions of relevant principles",
+      "Law 2 (Cognitive Governance): Remove or rephrase negative patterns",
+      "Law 3 (Truth Foundation): Add explicit mentions of relevant principles",
+      "Law 3 (Truth Foundation): Remove or rephrase negative patterns",
+      "Law 4 (Energy Stewardship): Add explicit mentions of relevant principles",
+      "Law 4 (Energy Stewardship): Remove or rephrase negative patterns",
+      "Law 5 (Deterministic Reliability): Add explicit mentions of relevant principles",
+      "Law 5 (Deterministic Reliability): Remove or rephrase negative patterns"
+    ],
+    "strengths": []
+  },
+  "timestamp": "20251019_203622"
+}
