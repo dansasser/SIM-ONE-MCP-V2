@@ -709,7 +709,44 @@ try:
         iterations = result.get("iterations", 0)
         logger.info(f"[WRAPPER] compose_governed_response completed | status={status} | passed={passed} | iterations={iterations}")
 
-        return result
+        # Return concise message for MCP client
+        if status in ["success", "partial_success"]:
+            final_score = result.get("final_response", {}).get("score", 0)
+            initial_score = result.get("initial_response", {}).get("score", 0)
+            improvement = result.get("improvement", 0)
+
+            message = f"""✅ Governed Response Generated Successfully
+
+**Status:** {'PASSED' if passed else 'NEEDS IMPROVEMENT'}
+**Final Score:** {final_score:.1f}%
+**Initial Score:** {initial_score:.1f}%
+**Improvement:** {improvement:+.1f}%
+**Refinement Iterations:** {iterations}
+
+**Generated Response:**
+{result.get('final_response', {}).get('text', '')[:500]}...
+
+**Artifacts:**
+- Database: {result.get('database_path', 'N/A')}
+- Summary: {result.get('summary_file', 'N/A')}
+
+Reference: {result.get('reference', '')}
+"""
+            return {
+                "message": message,
+                "passed": passed,
+                "final_score": final_score,
+                "initial_score": initial_score,
+                "improvement": improvement,
+                "iterations": iterations,
+                "status": status,
+                "database_path": result.get("database_path"),
+                "summary_file": result.get("summary_file"),
+                "reference": result.get("reference")
+            }
+        else:
+            # Return error response as-is
+            return result
 
     # Log successful registration
     logger.info("Governed Response Composer tool registered successfully")
