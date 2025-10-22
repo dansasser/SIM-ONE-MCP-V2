@@ -736,27 +736,20 @@ try:
 
 **Generated Response:**
 {result.get('final_response', {}).get('text', '')[:500]}...
-
-**Artifacts:**
-- Database: {result.get('database_path', 'N/A')}
-- Summary: {result.get('summary_file', 'N/A')}
-
-Reference: {result.get('reference', '')}
 """
+            # Return simple format matching other tools
             return {
-                "status": status,
                 "message": message,
-                "passed": passed,
-                "iterations": iterations,
-                "final_score": final_score,
-                "initial_score": initial_score,
-                "improvement": improvement,
-                "database_path": result.get("database_path"),
-                "summary_file": result.get("summary_file"),
-                "reference": result.get("reference")
+                "reference": result.get("reference"),
+                "artifacts": [
+                    {
+                        "description": "Iteration database",
+                        "path": str(result.get("database_path"))
+                    }
+                ]
             }
         else:
-            # Error cases - normalize structure to match documented schema
+            # Error cases - use same simple format
             error_msg = result.get("error", "Unknown error")
 
             # Build consistent error message
@@ -769,23 +762,11 @@ Reference: {result.get('reference', '')}
             else:
                 message = f"❌ Error: {error_msg}"
 
-            # Return normalized error structure
-            response = {
-                "status": status,
+            # Return simple format matching other tools
+            return {
                 "message": message,
-                "passed": False,
-                "iterations": 0,
-                "error": error_msg,
                 "reference": result.get("reference", "https://github.com/dansasser/SIM-ONE/blob/main/tutorials/governed_response_composer_tutorial.ipynb")
             }
-
-            # Add optional fields if present
-            if "suggestion" in result:
-                response["suggestion"] = result["suggestion"]
-            if "database_path" in result:
-                response["database_path"] = result["database_path"]
-
-            return response
 
     # Log successful registration
     logger.info("Governed Response Composer tool registered successfully")
