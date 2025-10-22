@@ -114,7 +114,9 @@ Generate a response that adheres to the SIM-ONE Framework's Five Laws."""
             ["claude", "-p", full_prompt],
             capture_output=True,
             text=True,
-            timeout=timeout
+            timeout=timeout,
+            stdin=subprocess.DEVNULL,  # Close stdin - CLI shouldn't wait for input
+            env={**os.environ, 'PYTHONUNBUFFERED': '1'}  # Disable output buffering
         )
 
         if result.returncode != 0:
