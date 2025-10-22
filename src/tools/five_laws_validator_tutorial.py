@@ -735,7 +735,7 @@ try:
 **Refinement Iterations:** {iterations}
 
 **Generated Response:**
-{result.get('final_response', {}).get('text', '')[:500]}...
+{result.get('final_response', {}).get('text', '')}
 """
             # Return simple format matching other tools
             return {
