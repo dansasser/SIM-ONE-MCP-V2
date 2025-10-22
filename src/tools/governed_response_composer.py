@@ -60,7 +60,8 @@ def check_claude_cli_available() -> Tuple[bool, str]:
             ["claude", "--version"],
             capture_output=True,
             text=True,
-            timeout=5
+            timeout=5,
+            stdin=subprocess.DEVNULL  # Prevent hanging on input
         )
         if result.returncode == 0:
             logger.info(f"Claude CLI check | status=available | version={result.stdout.strip()}")
@@ -70,7 +71,7 @@ def check_claude_cli_available() -> Tuple[bool, str]:
             return False, f"Claude CLI error: {result.stderr}"
     except FileNotFoundError:
         logger.warning("Claude CLI check | status=not_found | reason=FileNotFoundError")
-        return False, "Claude CLI not found. Install with: pip install claude-cli"
+        return False, "Claude CLI not found. Install with: npm install -g @anthropic-ai/claude-code"
     except subprocess.TimeoutExpired:
         logger.warning("Claude CLI check | status=timeout | timeout=5s")
         return False, "Claude CLI check timed out"
@@ -115,8 +116,7 @@ Generate a response that adheres to the SIM-ONE Framework's Five Laws."""
             capture_output=True,
             text=True,
             timeout=timeout,
-            stdin=subprocess.DEVNULL,  # Close stdin - CLI shouldn't wait for input
-            env={**os.environ, 'PYTHONUNBUFFERED': '1'}  # Disable output buffering
+            stdin=subprocess.DEVNULL  # Close stdin - CLI shouldn't wait for input
         )
 
         if result.returncode != 0:
@@ -133,9 +133,8 @@ Generate a response that adheres to the SIM-ONE Framework's Five Laws."""
     except FileNotFoundError:
         logger.error("Claude CLI not found | reason=FileNotFoundError")
         raise FileNotFoundError(
-            "Claude Code CLI not found. Please install and authenticate:\n"
-            "  pip install claude-cli\n"
-            "  claude auth"
+            "Claude Code CLI not found. Please install:\n"
+            "  npm install -g @anthropic-ai/claude-code"
         )
 
 
