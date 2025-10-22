@@ -677,16 +677,26 @@ try:
         Output: Governed response with iteration history, pass/fail status, and improvement metrics
 
         Returns:
-            Dictionary containing:
-            - initial_response: First generated response (text, score, violations, recommendations)
-            - final_response: Final refined response (text, score, violations, recommendations)
-            - iterations: Number of refinement cycles performed (0 = immediate pass)
-            - passed: Whether final response meets threshold
-            - improvement: Score improvement in percentage points
-            - database_path: SQLite file with complete iteration history
-            - status: "success", "partial_success", "unavailable", or "failed"
+            Dictionary with standardized structure across all status values:
 
-        If Claude CLI unavailable: Returns status message directing to validator-only tools
+            Common fields (always present):
+            - status (str): "success", "partial_success", "unavailable", or "failed"
+            - message (str): Human-readable description of result
+            - passed (bool): Whether response meets threshold (False for errors)
+            - iterations (int): Number of refinement cycles (0 for errors)
+            - reference (str): Tutorial reference URL
+
+            Success/partial_success additional fields:
+            - final_score (float): Final governance score percentage
+            - initial_score (float): Initial governance score percentage
+            - improvement (float): Score improvement in percentage points
+            - database_path (str): SQLite file with complete iteration history
+            - summary_file (str): JSON summary file path
+
+            Error additional fields:
+            - error (str): Error message describing what went wrong
+            - suggestion (str): Suggested alternative actions (for "unavailable" status)
+            - database_path (str): May be present for "failed" status
 
         Reference: https://github.com/dansasser/SIM-ONE/blob/main/tutorials/governed_response_composer_tutorial.ipynb
         """
@@ -709,7 +719,73 @@ try:
         iterations = result.get("iterations", 0)
         logger.info(f"[WRAPPER] compose_governed_response completed | status={status} | passed={passed} | iterations={iterations}")
 
-        return result
+        # Standardize return structure for all status values
+        if status in ["success", "partial_success"]:
+            # Success case - extract metrics and format message
+            final_score = result.get("final_response", {}).get("score", 0)
+            initial_score = result.get("initial_response", {}).get("score", 0)
+            improvement = result.get("improvement", 0)
+
+            message = f"""✅ Governed Response Generated Successfully
+
+**Status:** {'PASSED' if passed else 'NEEDS IMPROVEMENT'}
+**Final Score:** {final_score:.1f}%
+**Initial Score:** {initial_score:.1f}%
+**Improvement:** {improvement:+.1f}%
+**Refinement Iterations:** {iterations}
+
+**Generated Response:**
+{result.get('final_response', {}).get('text', '')[:500]}...
+
+**Artifacts:**
+- Database: {result.get('database_path', 'N/A')}
+- Summary: {result.get('summary_file', 'N/A')}
+
+Reference: {result.get('reference', '')}
+"""
+            return {
+                "status": status,
+                "message": message,
+                "passed": passed,
+                "iterations": iterations,
+                "final_score": final_score,
+                "initial_score": initial_score,
+                "improvement": improvement,
+                "database_path": result.get("database_path"),
+                "summary_file": result.get("summary_file"),
+                "reference": result.get("reference")
+            }
+        else:
+            # Error cases - normalize structure to match documented schema
+            error_msg = result.get("error", "Unknown error")
+
+            # Build consistent error message
+            if status == "unavailable":
+                message = f"❌ {error_msg}\n\n{result.get('message', '')}"
+                if result.get("suggestion"):
+                    message += f"\n\nSuggestion: {result['suggestion']}"
+            elif status == "failed":
+                message = f"❌ Governed response generation failed: {error_msg}"
+            else:
+                message = f"❌ Error: {error_msg}"
+
+            # Return normalized error structure
+            response = {
+                "status": status,
+                "message": message,
+                "passed": False,
+                "iterations": 0,
+                "error": error_msg,
+                "reference": result.get("reference", "https://github.com/dansasser/SIM-ONE/blob/main/tutorials/governed_response_composer_tutorial.ipynb")
+            }
+
+            # Add optional fields if present
+            if "suggestion" in result:
+                response["suggestion"] = result["suggestion"]
+            if "database_path" in result:
+                response["database_path"] = result["database_path"]
+
+            return response
 
     # Log successful registration
     logger.info("Governed Response Composer tool registered successfully")
