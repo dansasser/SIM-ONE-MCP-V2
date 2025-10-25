@@ -479,8 +479,20 @@ def five_laws_iterative_validate(
     out_prefix: Annotated[str | None, "Output file prefix"] = None,
 ) -> dict:
     """
-    Validate text with comprehensive feedback tracking for iterative refinement workflow.
-    Input is text to validate and threshold, output is validation scores with detailed recommendations for improvement.
+    Validate CLIENT AI responses with iterative refinement guidance.
+
+    WORKFLOW FOR CLIENT AI:
+    1. Generate your response to the user's question
+    2. Call this tool to validate your response
+    3. If FAILED: Read violations and recommendations
+    4. Improve YOUR response based on specific guidance
+    5. Call this tool again with your improved response
+    6. Repeat until PASSED (recommend max 3 iterations)
+
+    This tool DOES NOT refine for you - it provides feedback for YOU to refine YOUR OWN response.
+
+    Input: Your response text to validate and threshold
+    Output: Scores, violations, recommendations, pass/fail, and guidance for next iteration
     """
     import time
     start_time = time.time()
@@ -514,6 +526,24 @@ def five_laws_iterative_validate(
     logger.info(f"Iterative validation completed | overall_score={overall_compliance:.1f}% | threshold={threshold}% | passed={passed} | gap={gap:.1f} | violations={violations_count} | recommendations={recommendations_count}")
     logger.debug(f"Individual scores | law1={result['scores']['law1_architectural_intelligence']:.1f} | law2={result['scores']['law2_cognitive_governance']:.1f} | law3={result['scores']['law3_truth_foundation']:.1f} | law4={result['scores']['law4_energy_stewardship']:.1f} | law5={result['scores']['law5_deterministic_reliability']:.1f}")
 
+    # Build guidance for next iteration if failed
+    if not passed:
+        guidance_for_next_iteration = f"""TO IMPROVE YOUR RESPONSE:
+
+Priority Actions (address these first):
+{chr(10).join(f"  {i+1}. {rec}" for i, rec in enumerate(result.get("recommendations", [])[:3]))}
+
+Current Gap: {gap:.1f} percentage points below threshold
+
+Specific Issues Found:
+{chr(10).join(f"  - {v}" for v in result.get("violations", []))}
+
+Expected Improvement: Addressing top 3 recommendations could raise score by ~15-20%
+
+NEXT STEP: Revise your response and call this tool again to revalidate."""
+    else:
+        guidance_for_next_iteration = None
+
     # Build comprehensive response
     response = {
         "text": text,
@@ -534,7 +564,8 @@ def five_laws_iterative_validate(
         "violations": result.get("violations", []),
         "recommendations": result.get("recommendations", []),
         "strengths": result.get("strengths", []),
-        "message": f"{'[+] Validation passed!' if passed else '[-] Validation failed.'} Score: {overall_compliance:.1f}% (threshold: {threshold}%)"
+        "message": f"{'[+] Validation passed!' if passed else '[-] Validation failed.'} Score: {overall_compliance:.1f}% (threshold: {threshold}%)",
+        "guidance_for_next_iteration": guidance_for_next_iteration
     }
 
     # Save detailed validation report
@@ -658,7 +689,8 @@ try:
 
     @five_laws_validator_tutorial_mcp.tool
     def compose_governed_response(
-        prompt: Annotated[str | None, "User's request/prompt for governed response generation"] = None,
+        prompt: Annotated[str, "Original user question/prompt (provides context for refinement)"],
+        response: Annotated[str, "CLIENT AI's response to validate and refine"],
         threshold: Annotated[float, "Minimum governance score required (0-100)"] = 80.0,
         max_iterations: Annotated[int, "Maximum refinement attempts"] = 3,
         strictness: Annotated[Literal["lenient", "moderate", "strict"],
@@ -666,15 +698,25 @@ try:
         out_prefix: Annotated[str | None, "Output file prefix"] = None,
     ) -> dict:
         """
-        Generate and iteratively refine AI response until it meets governance standards.
+        Validate and refine CLIENT AI responses using server-side governance refinement.
 
-        This tool automatically generates responses using claude -p and refines them based on
-        Five Laws validation feedback until they meet the threshold or max iterations is reached.
+        WORKFLOW:
+        1. CLIENT AI receives user prompt
+        2. CLIENT AI generates their response
+        3. CLIENT AI calls this tool with BOTH prompt + response
+        4. SERVER validates the CLIENT's response
+        5. If FAILED: SERVER refines using Claude CLI
+        6. If PASSED: Returns CLIENT's original response
+        7. SERVER returns final governed response
 
-        Unlike the validator tools (which check existing text), this tool GENERATES governed text.
+        This tool VALIDATES CLIENT responses and REFINES them if needed.
+        The SERVER does the refinement using Claude CLI, not the client AI.
 
-        Input: User prompt describing what to generate
-        Output: Governed response with iteration history, pass/fail status, and improvement metrics
+        Input:
+        - prompt: Original user question (provides context for refinement)
+        - response: CLIENT AI's response to validate
+
+        Output: Governed response with validation results and refinement history
 
         Returns:
             Dictionary with standardized structure across all status values:
@@ -700,12 +742,30 @@ try:
 
         Reference: https://github.com/dansasser/SIM-ONE/blob/main/tutorials/governed_response_composer_tutorial.ipynb
         """
+        # Validate inputs
+        if not prompt or not prompt.strip():
+            error_msg = "Parameter 'prompt' is required - provide the original user question for context"
+            logger.error(f"[WRAPPER] {error_msg}")
+            return {
+                "message": f"❌ Input Error: {error_msg}",
+                "reference": "https://github.com/dansasser/SIM-ONE/blob/main/tutorials/governed_response_composer_tutorial.ipynb"
+            }
+
+        if not response or not response.strip():
+            error_msg = "Parameter 'response' is required - provide the CLIENT AI's response to validate"
+            logger.error(f"[WRAPPER] {error_msg}")
+            return {
+                "message": f"❌ Input Error: {error_msg}",
+                "reference": "https://github.com/dansasser/SIM-ONE/blob/main/tutorials/governed_response_composer_tutorial.ipynb"
+            }
+
         # Log wrapper invocation
-        logger.info(f"[WRAPPER] compose_governed_response invoked | threshold={threshold} | max_iterations={max_iterations} | strictness={strictness} | prompt_length={len(prompt) if prompt else 0}")
+        logger.info(f"[WRAPPER] compose_governed_response invoked | threshold={threshold} | max_iterations={max_iterations} | strictness={strictness} | prompt_length={len(prompt)} | response_length={len(response)}")
 
         # Call implementation (which has comprehensive logging)
         result = compose_governed_response_impl(
             prompt=prompt,
+            response=response,
             threshold=threshold,
             max_iterations=max_iterations,
             strictness=strictness,

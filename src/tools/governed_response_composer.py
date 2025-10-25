@@ -339,7 +339,8 @@ Focus on the laws that scored below threshold: {', '.join(failed_laws) if failed
 
 
 def compose_governed_response_impl(
-    prompt: Optional[str],
+    prompt: str,
+    response: str,
     threshold: float,
     max_iterations: int,
     strictness: Literal["lenient", "moderate", "strict"],
@@ -347,10 +348,13 @@ def compose_governed_response_impl(
     validator_instance
 ) -> dict:
     """
-    Implementation of compose_governed_response tool.
+    Implementation of compose_governed_response tool with client-first workflow.
+
+    This function validates CLIENT AI responses and refines them if needed using Claude CLI.
 
     Args:
-        prompt: User's request/prompt
+        prompt: Original user question/prompt (provides context for refinement)
+        response: CLIENT AI's response to validate and refine
         threshold: Minimum governance score required (0-100)
         max_iterations: Maximum refinement attempts
         strictness: Validation strictness level
@@ -360,13 +364,21 @@ def compose_governed_response_impl(
     Returns:
         Dictionary with initial_response, final_response, iterations, passed, improvement
     """
-    logger.info(f"[START] compose_governed_response | threshold={threshold} | max_iterations={max_iterations} | strictness={strictness} | prompt_length={len(prompt) if prompt else 0}")
+    logger.info(f"[START] compose_governed_response | threshold={threshold} | max_iterations={max_iterations} | strictness={strictness} | prompt_length={len(prompt)} | response_length={len(response)}")
 
     # === Validation ===
-    if prompt is None or not prompt.strip():
+    if not prompt or not prompt.strip():
         logger.warning("Validation failed | reason=empty_prompt")
         return {
-            "error": "Prompt cannot be empty",
+            "error": "Prompt cannot be empty - provide the original user question for context",
+            "status": "failed",
+            "reference": "https://github.com/dansasser/SIM-ONE/blob/main/tutorials/governed_response_composer_tutorial.ipynb"
+        }
+
+    if not response or not response.strip():
+        logger.warning("Validation failed | reason=empty_response")
+        return {
+            "error": "Response cannot be empty - provide the CLIENT AI's response to validate",
             "status": "failed",
             "reference": "https://github.com/dansasser/SIM-ONE/blob/main/tutorials/governed_response_composer_tutorial.ipynb"
         }
@@ -394,19 +406,18 @@ def compose_governed_response_impl(
     session_id = db.create_session(prompt, threshold, strictness)
 
     try:
-        # === Step 1: Generate initial response ===
-        logger.info(f"[START] Step 1/3: Generating initial response | prompt_length={len(prompt)}")
-        initial_text = _generate_response(prompt, is_initial=True)
-        logger.info(f"[SUCCESS] Step 1/3 | generated_length={len(initial_text)}")
+        # === Step 1: Use CLIENT-provided response (iteration 0) ===
+        logger.info(f"[START] Step 1/3: Validating CLIENT-provided response | response_length={len(response)}")
+        initial_text = response  # Use CLIENT's response, not server-generated
 
-        # === Step 2: Validate initial response ===
-        logger.info(f"[START] Step 2/3: Validating initial response | text_length={len(initial_text)}")
+        # === Step 2: Validate CLIENT response ===
+        logger.info(f"[START] Step 2/3: Validating CLIENT response | text_length={len(initial_text)}")
         initial_validation = validator_instance.validate(initial_text, strictness=strictness)
         initial_score = initial_validation["scores"]["overall_compliance"]
         initial_passed = initial_validation["pass_fail_status"] == "PASS"
         logger.info(f"[SUCCESS] Step 2/3 | initial_score={initial_score:.1f}% | passed={initial_passed}")
 
-        # Store initial iteration
+        # Store CLIENT-provided response (iteration 0)
         db.add_iteration(
             session_id=session_id,
             iteration_num=0,
@@ -417,9 +428,9 @@ def compose_governed_response_impl(
             recommendations=initial_validation.get("recommendations", [])
         )
 
-        # === Step 3: Check if initial response already passed ===
+        # === Step 3: Check if CLIENT response already passed ===
         if initial_passed:
-            logger.info(f"[PASS] Initial response passed validation | score={initial_score:.1f}% | threshold={threshold}% | iterations=0")
+            logger.info(f"[PASS] CLIENT response passed validation | score={initial_score:.1f}% | threshold={threshold}% | iterations=0")
 
             db.close()
 
